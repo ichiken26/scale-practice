@@ -1,8 +1,35 @@
+# dependencies
 node_modules/
+.pnpm-store/
+
+# build
 dist/
 .astro/
+.output/
+
+# cloudflare
+.wrangler/
+.dev.vars
+
+# tests
 coverage/
 playwright-report/
 test-results/
-.wrangler/
+blob-report/
+playwright/.cache/
+
+# logs and caches
 *.log
+*.tsbuildinfo
+.cache/
+.turbo/
+
+# local env
+.env
+.env.*
+!.env.example
+
+# os and editor
+.DS_Store
+Thumbs.db
+*.local

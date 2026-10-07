@@ -1,0 +1,7 @@
+import type { ContinuousMetrics,ContinuousPath } from '../../types'
+import { CONTINUOUS_SCORE_WEIGHTS } from './constants'
+export function calculateContinuousMetrics(path:Pick<ContinuousPath,'notes'>):ContinuousMetrics{let total=0,back=0,shifts=0,large=0;const counts=new Map<number,number>();for(let i=0;i<path.notes.length;i++){const n=path.notes[i] as NonNullable<(typeof path.notes)[number]>;counts.set(n.stringIndex,(counts.get(n.stringIndex)??0)+1);if(i){const p=path.notes[i-1] as typeof n,d=n.fret-p.fret;total+=Math.abs(d);if(d<0)back+=-d;if(n.stringIndex!==p.stringIndex)shifts++;if(Math.abs(d)>5)large+=Math.abs(d)-5}}const values=[...counts.values()],mean=values.reduce((a,b)=>a+b,0)/(values.length||1),variance=values.reduce((a,b)=>a+(b-mean)**2,0)/(values.length||1);return{totalFretMovement:total,backwardFretMovement:back,horizontalGain:(path.notes.at(-1)?.fret??0)-(path.notes[0]?.fret??0),endingFret:path.notes.at(-1)?.fret??0,notesPerStringVariance:variance,positionShiftCount:shifts,largeTransitionPenalty:large}}
+function score(path:ContinuousPath,mode:ContinuousPath['mode']):number{const w=CONTINUOUS_SCORE_WEIGHTS[mode];return(Object.keys(w) as (keyof ContinuousMetrics)[]).reduce((sum,key)=>sum+path.metrics[key]*w[key],0)}
+export function scorePlayability(path:ContinuousPath):number{return score(path,'playability')}
+export function scoreBalanced(path:ContinuousPath):number{return score(path,'balanced')}
+export function scoreHorizontal(path:ContinuousPath):number{return score(path,'horizontal')}

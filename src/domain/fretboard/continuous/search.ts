@@ -1,0 +1,4 @@
+import type { ContinuousPath,FretboardPath } from '../../types'
+import { scoreBalanced,scoreHorizontal,scorePlayability } from './score'
+const signature=(path:FretboardPath)=>path.notes.map(n=>`${n.stringIndex}:${n.fret}:${n.midi}`).join('|')
+export function selectDistinctContinuousPaths(candidates:readonly ContinuousPath[],excludedPaths:readonly FretboardPath[]):readonly ContinuousPath[]{const excluded=new Set(excludedPaths.map(signature)),selected:ContinuousPath[]=[];for(const [mode,score] of [['horizontal',scoreHorizontal],['balanced',scoreBalanced],['playability',scorePlayability]] as const){const best=candidates.filter(c=>!excluded.has(signature(c))&&!selected.some(s=>signature(s)===signature(c))).map(c=>({...c,mode})).sort((a,b)=>score(b)-score(a)||a.id.localeCompare(b.id))[0];if(best)selected.push(best)}const order={playability:0,balanced:1,horizontal:2};return selected.sort((a,b)=>order[a.mode]-order[b.mode])}

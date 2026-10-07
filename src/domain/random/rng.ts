@@ -1,0 +1,4 @@
+export interface SeededRng{next():number;nextInt(maxExclusive:number):number}
+export function createSeededRng(seed:number):SeededRng{if(!Number.isInteger(seed))throw new RangeError('seed must be an integer');let state=seed>>>0;return{next(){state=(state+0x6D2B79F5)>>>0;let t=state;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296},nextInt(max){if(!Number.isInteger(max)||max<=0)throw new RangeError('maxExclusive must be positive');return Math.floor(this.next()*max)}}}
+export function shuffleSeeded<T>(values:readonly T[],rng:SeededRng):T[]{const result=[...values];for(let i=result.length-1;i>0;i--){const j=rng.nextInt(i+1);[result[i],result[j]]=[result[j] as T,result[i] as T]}return result}
+export function randomSeed():number{const values=new Uint32Array(1);crypto.getRandomValues(values);return values[0] as number}

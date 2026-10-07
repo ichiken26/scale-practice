@@ -1,0 +1,1 @@
+declare module 'virtual:pwa-register/vue'{export function useRegisterSW(options?:{immediate?:boolean}):{needRefresh:import('vue').Ref<boolean>;offlineReady:import('vue').Ref<boolean>;updateServiceWorker:(reloadPage?:boolean)=>Promise<void>}}

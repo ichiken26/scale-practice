@@ -1,0 +1,9 @@
+import type { ContinuousPath,ContinuousSearchParams,FretboardNote } from '../../types'
+import { createSeededRng,shuffleSeeded } from '../../random/rng'
+import { findScaleLocations } from '../fretboard'
+import { getNotesPerString } from '../positionGenerator'
+import { calculateContinuousMetrics } from './score'
+import { MAX_CONTINUOUS_CANDIDATES } from './constants'
+export function generateContinuousCandidates(params:ContinuousSearchParams):readonly ContinuousPath[]{const max=params.maxFret??24,locations=findScaleLocations(params.tuning,params.root,params.scaleType,max),byMidi=new Map<number,FretboardNote[]>();for(const n of locations){const list=byMidi.get(n.midi)??[];list.push(n);byMidi.set(n.midi,list)}const min=getNotesPerString(params.scaleType)-1,maxPer=getNotesPerString(params.scaleType)+2,starts=shuffleSeeded(locations.filter(n=>n.stringIndex===0&&n.fret<=8),createSeededRng(params.seed)),result:ContinuousPath[]=[]
+  function visit(path:FretboardNote[],counts:Map<number,number>):void{if(result.length>=MAX_CONTINUOUS_CANDIDATES)return;const last=path.at(-1) as FretboardNote;if(last.fret>=17&&last.stringIndex===params.tuning.length-1){if([...counts.values()].every(c=>c>=min&&c<=maxPer)){const base={id:`continuous-${result.length}-${path.map(n=>`${n.stringIndex}:${n.fret}`).join('.')}`,notes:[...path],mode:'balanced' as const,metrics:undefined as never};result.push({...base,metrics:calculateContinuousMetrics(base)})}return}const nextMidi=[...byMidi.keys()].filter(m=>m>last.midi).sort((a,b)=>a-b)[0];if(nextMidi===undefined)return;for(const next of byMidi.get(nextMidi)??[]){if(next.stringIndex!==last.stringIndex&&next.stringIndex!==last.stringIndex+1)continue;const c=counts.get(next.stringIndex)??0;if(c>=maxPer)continue;const nextCounts=new Map(counts);nextCounts.set(next.stringIndex,c+1);visit([...path,next],nextCounts)}}
+  for(const start of starts)visit([start],new Map([[0,1]]));return result}

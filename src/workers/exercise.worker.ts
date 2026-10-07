@@ -1,0 +1,7 @@
+/// <reference lib="webworker" />
+import { createSeededRng } from '../domain/random/rng'
+import { generateNextRound } from '../domain/practice/roundGenerator'
+import type { PracticeSettings,RoundGenerationState } from '../domain/types'
+import type { WorkerRequest,WorkerResponse } from './protocol'
+let settings:PracticeSettings|null=null,state:RoundGenerationState={scaleBag:[],previousCombination:null,positionBags:new Map()}
+self.onmessage=(event:MessageEvent<WorkerRequest>)=>{const request=event.data;try{if(request.type==='INIT_SESSION'){settings=request.settings;state={scaleBag:[],previousCombination:null,positionBags:new Map()};self.postMessage({type:'READY',requestId:request.requestId} satisfies WorkerResponse);return}if(!settings)throw new Error('Session is not initialized');const mode=request.type==='GENERATE_RANDOM_ROUND'?'randomPosition':request.type==='GENERATE_FULL_NECK'?'fullNeck':settings.mode;const round=generateNextRound({settings:{...settings,mode},rng:createSeededRng(settings.seed+request.requestId),state,...(request.previousCombination===undefined?{}:{previousCombination:request.previousCombination})});self.postMessage({type:'ROUND_GENERATED',requestId:request.requestId,round} satisfies WorkerResponse)}catch(error){self.postMessage({type:'ERROR',requestId:request.requestId,message:error instanceof Error?error.message:'Unknown worker error'} satisfies WorkerResponse)}}

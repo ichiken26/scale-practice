@@ -1,0 +1,1 @@
+<script setup lang="ts">defineProps<{playing:boolean;loading:boolean}>();const emit=defineEmits<{(e:'toggle'):void}>()</script><template><button class="transport" :class="{stop:playing}" :disabled="loading" @click="emit('toggle')">{{loading?'Preparing…':playing?'Stop':'Start'}} <kbd>Space</kbd></button></template>

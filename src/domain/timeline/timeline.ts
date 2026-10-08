@@ -6,7 +6,7 @@ const METRONOME_SPACING = QUARTER
 const CLICK_TICKS = 120
 
 export function ticksPerExerciseNote(exercise: ExerciseType): number {
-  return exercise === 'normal' ? EIGHTH : QUARTER_TRIPLET
+  return exercise === 'threeNote' ? QUARTER_TRIPLET : EIGHTH
 }
 
 export function alignTickToNextBar(tick: number): number {

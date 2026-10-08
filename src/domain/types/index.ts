@@ -3,6 +3,8 @@ export type ScaleType = 'major'|'naturalMinor'|'harmonicMinor'|'melodicMinor'|'m
 export type InstrumentType = 'guitar'|'bass'
 export type ExerciseType = 'normal'|'threeNote'|'fourNote'
 export type PracticeMode = 'randomPosition'|'fullNeck'
+export type RootSelection = PitchClass|'auto'
+export type FretboardLabelMode = 'note'|'degree'
 
 export interface FretboardCell { stringIndex: number; fret: number; midi: number; pitchClass: PitchClass }
 export interface FretboardNote extends FretboardCell { scaleDegree: number }
@@ -29,15 +31,36 @@ export interface PositionBagKeyParams extends ScaleCombination { tuning: readonl
 export interface PositionBag { remaining: readonly FretboardPosition[]; all: readonly FretboardPosition[]; previousPositionId: string|null }
 export interface PositionDrawResult { position: FretboardPosition|null; bag: PositionBag }
 export interface ExerciseNote { note: FretboardNote; sourceIndex: number }
-export interface TimelineEvent { tick: number; durationTicks: number; type: 'note'|'metronome'|'announcement'|'preview'|'rest'; midi?: number; note?: FretboardNote; accent?: boolean }
+export interface TimelineEvent {
+  tick: number
+  durationTicks: number
+  type: 'note'|'metronome'|'announcement'|'preview'|'rest'
+  midi?: number
+  note?: FretboardNote
+  accent?: boolean
+  pathIndex?: number
+}
 export interface ExerciseTimeline { events: readonly TimelineEvent[]; totalTicks: number; ascendingEndTick: number; descendingStartTick: number }
-export interface BuildExerciseTimelineParams { ascending: readonly ExerciseNote[]; descending: readonly ExerciseNote[]; exerciseType: ExerciseType; previewBars?: number; gapBars?: number }
-export interface PracticeSettings { instrument: InstrumentType; tuning: readonly number[]; root: PitchClass; scaleType: ScaleType|'random'; exerciseType: ExerciseType; mode: PracticeMode; bpm: number; seed: number }
+export interface BuildExerciseTimelineParams {
+  ascending: readonly ExerciseNote[]
+  descending: readonly ExerciseNote[]
+  exerciseType: ExerciseType
+  announcementBars?: number
+  previewBars?: number
+  gapBars?: number
+}
+export interface PracticeSettings { instrument: InstrumentType; tuning: readonly number[]; root: RootSelection; scaleType: ScaleType|'random'; exerciseType: ExerciseType; mode: PracticeMode; bpm: number; seed: number }
 export interface PracticeRound { id: string; combination: ScaleCombination; paths: readonly FretboardPath[]; timeline: ExerciseTimeline; debugEvents: readonly string[] }
 export interface RoundGenerationState { scaleBag: ScaleCombination[]; previousCombination: ScaleCombination|null; positionBags: Map<string,PositionBag> }
 export interface RoundGenerationContext { settings: PracticeSettings; rng: import('../random/rng').SeededRng; previousCombination?: ScaleCombination|null; excludedPaths?: readonly FretboardPath[]; state?: RoundGenerationState }
 
-export interface AudioClockSnapshot { contextTime: number; performanceTime: number; outputLatency: number }
+export interface AudioClockSnapshot {
+  contextTime: number
+  performanceTime: number
+  baseLatency: number
+  outputLatency: number
+  usesOutputTimestamp: boolean
+}
 export interface VisualTimelineState { currentEvent: TimelineEvent|null; nextEvent: TimelineEvent|null; eventIndex: number; progress: number }
 export interface TimingSample { expectedTime: number; audioContextTime: number; outputContextTime: number; performanceTime: number; estimatedAudibleTime: number; visualTarget: number; visualActual: number; deviation: number; droppedFrames: number; audioContextState: string }
 export interface TimingStatistics { count: number; max: number; mean: number; p95: number; p99: number }

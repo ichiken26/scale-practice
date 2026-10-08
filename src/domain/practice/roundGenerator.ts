@@ -3,30 +3,76 @@ import { enumeratePositions } from '../fretboard/positionGenerator'
 import { generateAllLinkedDiagonals } from '../fretboard/linkedDiagonal'
 import { generateContinuousCandidates } from '../fretboard/continuous/candidate'
 import { selectDistinctContinuousPaths } from '../fretboard/continuous/search'
-import { buildWeightedScaleBag, preventBoundaryDuplicate, shuffleScaleBag } from './weightedBag'
+import { buildSequentialScaleCycle, buildWeightedScaleBag, preventBoundaryDuplicate, shuffleScaleBag } from './weightedBag'
 import { createPositionBag, createPositionBagKey, drawPosition, refillPositionBag } from './positionBag'
 import { planPracticePath } from './ascent'
 import { buildExerciseTimeline } from '../timeline/timeline'
 import { BAR_4_4, QUARTER } from '../timeline/constants'
 
-const PATH_GAP_TICKS = BAR_4_4 * 2
+const PATH_TRANSITION_TICKS = BAR_4_4 * 2
 const CLICK_TICKS = 120
+
+function previousCombination(context: RoundGenerationContext): ScaleCombination | null {
+  return context.state?.previousCombination ?? context.previousCombination ?? null
+}
+
+function createScaleBag(context: RoundGenerationContext): ScaleCombination[] {
+  const { root, scaleType } = context.settings
+
+  if (root !== 'auto') {
+    if (scaleType !== 'random') return [{ root, scaleType }]
+    const fixedRootBag = buildWeightedScaleBag('random').filter(item => item.root === root)
+    return preventBoundaryDuplicate(previousCombination(context), shuffleScaleBag(fixedRootBag, context.rng))
+  }
+
+  if (scaleType !== 'random') return [...buildSequentialScaleCycle(scaleType)]
+
+  return preventBoundaryDuplicate(
+    previousCombination(context),
+    shuffleScaleBag(buildWeightedScaleBag('random'), context.rng),
+  )
+}
 
 function combinations(context: RoundGenerationContext): ScaleCombination[] {
   if (context.state) {
-    if (!context.state.scaleBag.length) {
-      context.state.scaleBag.push(...preventBoundaryDuplicate(context.state.previousCombination, shuffleScaleBag(buildWeightedScaleBag(context.settings.scaleType), context.rng)))
-    }
+    if (!context.state.scaleBag.length) context.state.scaleBag.push(...createScaleBag(context))
     return context.state.scaleBag
   }
-  return preventBoundaryDuplicate(context.previousCombination ?? null, shuffleScaleBag(buildWeightedScaleBag(context.settings.scaleType), context.rng))
+  return createScaleBag(context)
 }
 
 function compareEvents(a: TimelineEvent, b: TimelineEvent): number {
   return a.tick - b.tick || (a.type === 'metronome' ? -1 : 1)
 }
 
-function buildPresentedRound(context: RoundGenerationContext, combination: ScaleCombination, paths: readonly FretboardPath[]): { paths: FretboardPath[]; timeline: ExerciseTimeline } {
+function addTransitionClicks(events: TimelineEvent[], startTick: number): void {
+  for (let beat = 0; beat < PATH_TRANSITION_TICKS; beat += QUARTER) {
+    events.push({
+      tick: startTick + beat,
+      durationTicks: CLICK_TICKS,
+      type: 'metronome',
+      accent: beat % BAR_4_4 === 0,
+    })
+  }
+}
+
+function sustainLandingThroughFirstTransitionBar(
+  events: TimelineEvent[],
+  transitionStartTick: number,
+  pathIndex: number,
+): void {
+  const landing = [...events].reverse().find(event => event.type === 'note' && event.pathIndex === pathIndex)
+  if (!landing) return
+  const sustainEndTick = transitionStartTick + BAR_4_4
+  const duration = sustainEndTick - landing.tick
+  if (duration > landing.durationTicks) landing.durationTicks = duration
+}
+
+function buildPresentedRound(
+  context: RoundGenerationContext,
+  combination: ScaleCombination,
+  paths: readonly FretboardPath[],
+): { paths: FretboardPath[]; timeline: ExerciseTimeline } {
   const planned = paths.map(path => ({
     path,
     run: planPracticePath({
@@ -41,35 +87,61 @@ function buildPresentedRound(context: RoundGenerationContext, combination: Scale
   const events: TimelineEvent[] = []
   let ascendingEndTick = 0
   let descendingStartTick = 0
-  for (let index = 0; index < planned.length; index++) {
+
+  for (let index = 0; index < planned.length; index += 1) {
     const item = planned[index]
     if (!item) continue
+    const firstPath = index === 0
     const part = buildExerciseTimeline({
       ascending: item.run.ascending,
       descending: item.run.descending,
       exerciseType: context.settings.exerciseType,
-      previewBars: index === 0 ? 1 : 0,
+      announcementBars: 0,
+      previewBars: firstPath ? 2 : 0,
     })
-    events.push(...part.events.map(event => ({ ...event, tick: event.tick + offset })))
-    if (index === 0) {
+
+    events.push(...part.events.map(event => ({
+      ...event,
+      tick: event.tick + offset,
+      ...(event.type === 'note' ? { pathIndex: index } : {}),
+    })))
+
+    if (firstPath) {
       ascendingEndTick = part.ascendingEndTick
       descendingStartTick = part.descendingStartTick
     }
+
     offset += part.totalTicks
+
+    // Do not strike the landing note a second time. Extend the already-sounding
+    // final descending note through the first bar of the eight-count transition.
+    sustainLandingThroughFirstTransitionBar(events, offset, index)
+
     if (index < planned.length - 1) {
-      for (let beat = 0; beat < PATH_GAP_TICKS; beat += QUARTER) {
-        events.push({ tick: offset + beat, durationTicks: CLICK_TICKS, type: 'metronome', accent: beat % BAR_4_4 === 0 })
-      }
-      offset += PATH_GAP_TICKS
+      addTransitionClicks(events, offset)
+      offset += PATH_TRANSITION_TICKS
     }
+    // For the final path, the next round begins at this offset. Its two-bar preview
+    // provides the eight clicks while the previous landing sustains through bar one.
   }
+
   return {
     paths: planned.map(({ path, run }) => ({ ...path, notes: run.displayNotes })),
-    timeline: { events: events.sort(compareEvents), totalTicks: offset, ascendingEndTick, descendingStartTick },
+    timeline: {
+      events: events.sort(compareEvents),
+      totalTicks: offset,
+      ascendingEndTick,
+      descendingStartTick,
+    },
   }
 }
 
-function round(context: RoundGenerationContext, combination: ScaleCombination, paths: readonly FretboardPath[], debugEvents: readonly string[]): PracticeRound {
+function round(
+  context: RoundGenerationContext,
+  combination: ScaleCombination,
+  paths: readonly FretboardPath[],
+  debugEvents: readonly string[],
+): PracticeRound {
   const first = paths[0]
   if (!first) throw new RangeError('A round requires at least one path')
   const presented = buildPresentedRound(context, combination, paths)
@@ -106,7 +178,9 @@ export function generateRandomPositionRound(context: RoundGenerationContext): Pr
       context.state.positionBags.set(key, draw.bag)
       context.state.previousCombination = combination
     }
-    if (draw.position) return round(context, combination, [{ id: draw.position.id, notes: draw.position.ascendingPath }], debug)
+    if (draw.position) {
+      return round(context, combination, [{ id: draw.position.id, notes: draw.position.ascendingPath }], debug)
+    }
   }
   throw new RangeError('No valid scale position for the selected settings')
 }

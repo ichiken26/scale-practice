@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { FretboardNote, PitchClass, ScaleType } from '../domain/types'
+import type { FretboardLabelMode, FretboardNote, PitchClass, ScaleType } from '../domain/types'
 import { findScaleLocations } from '../domain/fretboard/fretboard'
+import { getScaleDegreeLabel } from '../domain/music/scales'
 import { spellScale } from '../domain/music/spelling'
 
 const props = defineProps<{
@@ -10,6 +11,7 @@ const props = defineProps<{
   scaleType: ScaleType | null
   path: readonly FretboardNote[]
   current: FretboardNote | null
+  labelMode: FretboardLabelMode
 }>()
 
 const locations = computed(() => props.root === null || props.scaleType === null ? [] : findScaleLocations(props.tuning, props.root, props.scaleType))
@@ -17,7 +19,10 @@ const spellings = computed(() => {
   if (props.root === null || props.scaleType === null) return new Map<number, string>()
   return new Map(spellScale(props.root, props.scaleType).notes.map((note, index) => [index + 1, note.text]))
 })
-const label = (note: FretboardNote) => spellings.value.get(note.scaleDegree) ?? ''
+const label = (note: FretboardNote) => {
+  if (props.labelMode === 'degree' && props.scaleType !== null) return getScaleDegreeLabel(props.scaleType, note.scaleDegree)
+  return spellings.value.get(note.scaleDegree) ?? ''
+}
 const key = (note: FretboardNote) => `${note.stringIndex}:${note.fret}`
 const pathKeys = computed(() => new Set(props.path.map(key)))
 const pathRoots = computed(() => locations.value.filter(note => note.scaleDegree === 1 && pathKeys.value.has(key(note))))

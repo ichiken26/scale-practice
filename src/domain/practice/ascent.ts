@@ -38,15 +38,20 @@ function coversEveryString(notes: readonly FretboardNote[], stringCount: number)
 }
 
 /**
- * Play the position straight up, then straight back down.
- * The shape already uses every string, so nothing is added after the top note.
+ * Play the position up and back down.
+ *
+ * Normal and four-note turn immediately and re-attack the apex:
+ * ... A B C -> C B A ...
+ * Three-note also keeps the apex, but remains bar-aligned in the timeline.
  */
 export function planPracticePath(params: PlanPracticePathParams): PlannedPracticePath {
   if (!params.tuning.length) throw new RangeError('tuning is required')
   const core = limitToPracticeAscent(params.notes, params.scaleType, params.tuning.length)
+  const descendingCore = core
+
   return {
     displayNotes: core,
     ascending: createAscendingExercise(core, params.exerciseType),
-    descending: createDescendingExercise(core, params.exerciseType),
+    descending: createDescendingExercise(descendingCore, params.exerciseType),
   }
 }

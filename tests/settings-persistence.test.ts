@@ -10,22 +10,27 @@ function memory() {
 }
 
 describe('settings persistence', () => {
-  it('defaults guitar to 6 strings and bass to 4', () => {
+  it('defaults to guitar, automatic root selection, and Major', () => {
     const settings = defaultSettings()
     expect(settings.guitar).toEqual({ stringCount: 6, tuningId: 'guitar-6-standard' })
     expect(settings.bass).toEqual({ stringCount: 4, tuningId: 'bass-4-standard' })
     expect(settings.instrument).toBe('guitar')
+    expect(settings.root).toBe('auto')
+    expect(settings.scaleType).toBe('major')
+    expect(settings.fretboardLabelMode).toBe('note')
   })
 
-  it('round-trips every setting, including a bass remembered at 5 strings', () => {
+  it('round-trips every setting, including fretboard interval labels', () => {
     const storage = memory()
     const settings = defaultSettings()
     settings.instrument = 'bass'
     settings.bass = { stringCount: 5, tuningId: 'bass-5-standard' }
     settings.guitar = { stringCount: 7, tuningId: 'guitar-7-drop-a' }
+    settings.root = 4
     settings.scaleType = 'harmonicMinor'
     settings.exerciseType = 'fourNote'
     settings.mode = 'fullNeck'
+    settings.fretboardLabelMode = 'degree'
     settings.bpm = 40
     settings.metronomeVolume = 0
     settings.referenceVolume = 1
@@ -38,10 +43,14 @@ describe('settings persistence', () => {
       instrument: 'guitar',
       guitar: { stringCount: 7, tuningId: 'guitar-7-standard' },
       bass: { stringCount: 6, tuningId: 'bass-6-standard' },
+      root: 11,
+      fretboardLabelMode: 'degree',
       bpm: 220,
     })
     expect(saved.guitar.stringCount).toBe(7)
     expect(saved.bass.stringCount).toBe(6)
+    expect(saved.root).toBe(11)
+    expect(saved.fretboardLabelMode).toBe('degree')
     expect(saved.bpm).toBe(220)
   })
 
@@ -52,9 +61,11 @@ describe('settings persistence', () => {
       instrument: 'ukulele',
       guitar: { stringCount: 5, tuningId: '' },
       bass: null,
+      root: 12,
       scaleType: 'chromatic',
       exerciseType: 'sixNote',
       mode: 'loop',
+      fretboardLabelMode: 'solfege',
       bpm: 10,
       metronomeVolume: 2,
       referenceVolume: Number.NaN,
@@ -62,9 +73,11 @@ describe('settings persistence', () => {
     expect(saved.instrument).toBe('guitar')
     expect(saved.guitar).toEqual({ stringCount: 6, tuningId: 'guitar-6-standard' })
     expect(saved.bass.stringCount).toBe(4)
-    expect(saved.scaleType).toBe('random')
+    expect(saved.root).toBe('auto')
+    expect(saved.scaleType).toBe('major')
     expect(saved.exerciseType).toBe('normal')
     expect(saved.mode).toBe('randomPosition')
+    expect(saved.fretboardLabelMode).toBe('note')
     expect(saved.bpm).toBe(100)
     expect(saved.metronomeVolume).toBe(0.3)
     expect(saved.referenceVolume).toBe(0.35)

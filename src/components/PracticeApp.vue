@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue'
 import { useRegisterSW } from 'virtual:pwa-register/vue'
-import type { ExerciseType, InstrumentType, PracticeMode, PracticeRound, ScaleType, VisualTimelineState } from '../domain/types'
+import type { ExerciseType, FretboardLabelMode, InstrumentType, PracticeMode, PracticeRound, RootSelection, ScaleType, VisualTimelineState } from '../domain/types'
 import { getTuningPresets } from '../domain/music/tuning'
 import { randomSeed } from '../domain/random/rng'
 import { loadSettings, saveSettings, type InstrumentPreference, type PersistedSettings } from '../settings/persistence'
@@ -22,9 +22,11 @@ const preferences = ref<Pick<PersistedSettings, 'guitar' | 'bass'>>({ guitar: st
 const instrument = ref<InstrumentType>(stored.instrument)
 const stringCount = ref(stored[stored.instrument].stringCount)
 const tuningId = ref(resolveTuning(stored.instrument, stored[stored.instrument].stringCount, stored[stored.instrument].tuningId))
+const rootSelection = ref<RootSelection>(stored.root)
 const scaleType = ref<ScaleType | 'random'>(stored.scaleType)
 const exerciseType = ref<ExerciseType>(stored.exerciseType)
 const mode = ref<PracticeMode>(stored.mode)
+const fretboardLabelMode = ref<FretboardLabelMode>(stored.fretboardLabelMode)
 const bpm = ref(stored.bpm)
 const seed = ref(randomSeed())
 const playing = ref(false)
@@ -56,7 +58,7 @@ let arming = false
 let sessionToken = 0
 const { needRefresh, updateServiceWorker } = useRegisterSW({ immediate: true })
 
-watch([scaleType, exerciseType, mode, bpm, metronomeVolume, referenceVolume], () => persist())
+watch([rootSelection, scaleType, exerciseType, mode, fretboardLabelMode, bpm, metronomeVolume, referenceVolume], () => persist())
 watch([metronomeVolume, referenceVolume], () => { audio.setVolumes(metronomeVolume.value, referenceVolume.value) })
 
 function resolveTuning(nextInstrument: InstrumentType, count: number, id: string): string {
@@ -75,9 +77,11 @@ function persist() {
     instrument: instrument.value,
     guitar: preferences.value.guitar,
     bass: preferences.value.bass,
+    root: rootSelection.value,
     scaleType: scaleType.value,
     exerciseType: exerciseType.value,
     mode: mode.value,
+    fretboardLabelMode: fretboardLabelMode.value,
     bpm: bpm.value,
     metronomeVolume: metronomeVolume.value,
     referenceVolume: referenceVolume.value,
@@ -109,7 +113,16 @@ function selectTuning(id: string) {
 }
 
 function settings() {
-  return { instrument: instrument.value, tuning: tuning.value, root: 0 as const, scaleType: scaleType.value, exerciseType: exerciseType.value, mode: mode.value, bpm: bpm.value, seed: seed.value }
+  return {
+    instrument: instrument.value,
+    tuning: tuning.value,
+    root: rootSelection.value,
+    scaleType: scaleType.value,
+    exerciseType: exerciseType.value,
+    mode: mode.value,
+    bpm: bpm.value,
+    seed: seed.value,
+  }
 }
 
 async function armNext() {
@@ -122,7 +135,10 @@ async function armNext() {
     const combination = toRaw(current.combination)
     const drawn = await worker.generateNext({ root: combination.root, scaleType: combination.scaleType })
     if (!playing.value || token !== sessionToken || round.value !== current) return
-    nextSessionStart = audio.enqueue(drawn.timeline, bpm.value, instrument.value, planned, { metronome: metronomeVolume.value, reference: referenceVolume.value })
+    nextSessionStart = audio.enqueue(drawn.timeline, bpm.value, instrument.value, planned, {
+      metronome: metronomeVolume.value,
+      reference: referenceVolume.value,
+    })
     nextRound = drawn
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : 'Unable to draw the next scale'
@@ -147,7 +163,10 @@ async function start() {
     recorder.clear()
     lastRecordedEvent = -1
     lastFramePerformance = performance.now()
-    const timing = await audio.start(round.value.timeline, bpm.value, instrument.value, { metronome: metronomeVolume.value, reference: referenceVolume.value })
+    const timing = await audio.start(round.value.timeline, bpm.value, instrument.value, {
+      metronome: metronomeVolume.value,
+      reference: referenceVolume.value,
+    })
     sessionStart = timing.sessionStart
     playing.value = true
     try {
@@ -202,6 +221,12 @@ function animate() {
   const active = round.value
   if (!active) return
   visual.value = getVisualStateAtTick(active.timeline, tick)
+
+  const timelinePathIndex = visual.value.currentEvent?.pathIndex ?? visual.value.nextEvent?.pathIndex
+  if (typeof timelinePathIndex === 'number') {
+    pathIndex.value = Math.max(0, Math.min(active.paths.length - 1, timelinePathIndex))
+  }
+
   const currentEvent = visual.value.currentEvent
   if (currentEvent && visual.value.eventIndex !== lastRecordedEvent) {
     const expected = tickToContextTime(currentEvent.tick, bpm.value, sessionStart)
@@ -221,7 +246,6 @@ function animate() {
     lastRecordedEvent = visual.value.eventIndex
   }
   lastFramePerformance = now
-  if (active.paths.length > 1) pathIndex.value = Math.min(active.paths.length - 1, Math.floor(Math.max(0, tick) / active.timeline.totalTicks * active.paths.length))
   frame = requestAnimationFrame(animate)
 }
 
@@ -256,13 +280,44 @@ onBeforeUnmount(() => {
   <main>
     <div v-if="needRefresh && !playing" class="update">A new version is ready. <button @click="updateServiceWorker(true)">Update</button></div>
     <ScaleHeader :combination="round?.combination ?? null" />
-    <SettingsPanel :instrument="instrument" :string-count="stringCount" :tuning-id="tuningId" :scale-type="scaleType" :exercise-type="exerciseType" :mode="mode" :bpm="bpm" :metronome-volume="metronomeVolume" :reference-volume="referenceVolume" :disabled="playing || loading" @update:instrument="selectInstrument" @update:string-count="selectStringCount" @update:tuning-id="selectTuning" @update:scale-type="scaleType = $event" @update:exercise-type="exerciseType = $event" @update:mode="mode = $event" @update:bpm="bpm = $event" @update:metronome-volume="metronomeVolume = $event" @update:reference-volume="referenceVolume = $event" />
+    <SettingsPanel
+      :instrument="instrument"
+      :string-count="stringCount"
+      :tuning-id="tuningId"
+      :root="rootSelection"
+      :scale-type="scaleType"
+      :exercise-type="exerciseType"
+      :mode="mode"
+      :fretboard-label-mode="fretboardLabelMode"
+      :bpm="bpm"
+      :metronome-volume="metronomeVolume"
+      :reference-volume="referenceVolume"
+      :disabled="playing || loading"
+      @update:instrument="selectInstrument"
+      @update:string-count="selectStringCount"
+      @update:tuning-id="selectTuning"
+      @update:root="rootSelection = $event"
+      @update:scale-type="scaleType = $event"
+      @update:exercise-type="exerciseType = $event"
+      @update:mode="mode = $event"
+      @update:fretboard-label-mode="fretboardLabelMode = $event"
+      @update:bpm="bpm = $event"
+      @update:metronome-volume="metronomeVolume = $event"
+      @update:reference-volume="referenceVolume = $event"
+    />
     <p v-if="error" class="error" role="alert">{{ error }}</p>
     <section class="practice">
       <div class="progress">
         <span>{{ mode === 'fullNeck' && round ? `Position ${pathIndex + 1} / ${round.paths.length}` : playing ? 'Now play!!' : 'Ready' }}</span>
       </div>
-      <FretboardView :tuning="tuning" :root="selectedRoot" :scale-type="selectedScale" :path="currentPath" :current="visual.currentEvent?.note ?? null" />
+      <FretboardView
+        :tuning="tuning"
+        :root="selectedRoot"
+        :scale-type="selectedScale"
+        :path="currentPath"
+        :current="visual.currentEvent?.note ?? null"
+        :label-mode="fretboardLabelMode"
+      />
       <div class="controls">
         <TransportControls :playing="playing" :loading="loading" @toggle="toggle" />
       </div>

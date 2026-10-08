@@ -9,6 +9,7 @@ import {
 } from '../src/domain/practice/weightedBag'
 import { createPositionBag, createPositionBagKey, drawPosition, refillPositionBag } from '../src/domain/practice/positionBag'
 import { createAscendingExercise, createDescendingExercise, createNormalPattern, createSlidingWindowPattern } from '../src/domain/practice/pattern'
+import { planPracticePath } from '../src/domain/practice/ascent'
 import type { FretboardNote, FretboardPosition } from '../src/domain/types'
 
 describe('seeded random', () => {
@@ -132,6 +133,27 @@ describe('exercise patterns', () => {
   it('reverses before descending window processing', () => {
     expect(createAscendingExercise(notes, 'normal')[0]?.note.midi).toBe(40)
     expect(createDescendingExercise(notes, 'threeNote').slice(0, 3).map(item => item.note.midi)).toEqual([47, 46, 45])
+  })
+
+  it('omits the apex from Normal and 4-note descending turns, but keeps it for 3-note', () => {
+    const params = {
+      notes,
+      scaleType: 'major' as const,
+      tuning: [40],
+      root: 0 as const,
+    }
+
+    const normal = planPracticePath({ ...params, exerciseType: 'normal' })
+    expect(normal.ascending.at(-1)?.note.midi).toBe(47)
+    expect(normal.descending[0]?.note.midi).toBe(46)
+
+    const four = planPracticePath({ ...params, exerciseType: 'fourNote' })
+    expect(four.ascending.at(-1)?.note.midi).toBe(47)
+    expect(four.descending[0]?.note.midi).toBe(46)
+    expect(four.descending.some(item => item.note.midi === 47)).toBe(false)
+
+    const three = planPracticePath({ ...params, exerciseType: 'threeNote' })
+    expect(three.descending[0]?.note.midi).toBe(47)
   })
 
   it('returns no partial window', () => {

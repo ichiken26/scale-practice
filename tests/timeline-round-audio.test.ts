@@ -39,19 +39,38 @@ describe('tick timeline', () => {
     expect(firstNote?.tick).toBe(BAR_4_4 * 2)
   })
 
-  it('holds ascent to the next bar and reattacks the apex on the downbeat', () => {
+  it('turns Normal around immediately without stretching the apex', () => {
     const oddNotes = notes.slice(0, 7)
+    const ascending = createAscendingExercise(oddNotes, 'normal')
+    const descending = createDescendingExercise(oddNotes.slice(0, -1), 'normal')
     const timeline = buildExerciseTimeline({
-      ascending: createAscendingExercise(oddNotes, 'normal'),
-      descending: createDescendingExercise(oddNotes, 'normal'),
+      ascending,
+      descending,
       exerciseType: 'normal',
     })
+    const previewTicks = BAR_4_4 * 2
+    expect(timeline.descendingStartTick).toBe(previewTicks + ascending.length * EIGHTH)
+    expect(timeline.descendingStartTick).toBe(timeline.ascendingEndTick)
+
+    const musical = timeline.events.filter(event => event.type === 'note')
+    const ascendingLast = musical[ascending.length - 1]
+    expect(ascendingLast?.durationTicks).toBe(Math.round(EIGHTH * 0.8))
+    expect(musical[ascending.length]?.midi).toBe(oddNotes.at(-2)?.midi)
+  })
+
+  it('keeps three-note turnaround bar-aligned', () => {
+    const oddNotes = notes.slice(0, 7)
+    const ascending = createAscendingExercise(oddNotes, 'threeNote')
+    const timeline = buildExerciseTimeline({
+      ascending,
+      descending: createDescendingExercise(oddNotes, 'threeNote'),
+      exerciseType: 'threeNote',
+    })
+    expect(timeline.descendingStartTick).toBeGreaterThanOrEqual(timeline.ascendingEndTick)
     expect(timeline.descendingStartTick % BAR_4_4).toBe(0)
     const musical = timeline.events.filter(event => event.type === 'note')
-    const apexEvents = musical.filter(event => event.midi === oddNotes.at(-1)?.midi)
-    expect(apexEvents).toHaveLength(2)
-    expect(apexEvents[0]?.tick + (apexEvents[0]?.durationTicks ?? 0)).toBe(timeline.descendingStartTick)
-    expect(apexEvents[1]?.tick).toBe(timeline.descendingStartTick)
+    const ascendingLast = musical[ascending.length - 1]
+    expect((ascendingLast?.tick ?? 0) + (ascendingLast?.durationTicks ?? 0)).toBe(timeline.descendingStartTick)
   })
 
   it('turns four-note patterns around immediately without stretching the apex', () => {

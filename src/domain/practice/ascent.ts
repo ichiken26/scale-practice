@@ -38,15 +38,20 @@ function coversEveryString(notes: readonly FretboardNote[], stringCount: number)
 }
 
 /**
- * Play the position straight up, then straight back down.
- * The shape already uses every string, so nothing is added after the top note.
+ * Play the position up and back down.
+ *
+ * Normal and four-note exercises turn around immediately and do not re-attack
+ * the apex. Three-note keeps the apex in the descending pattern so its triplet
+ * grouping remains intact.
  */
 export function planPracticePath(params: PlanPracticePathParams): PlannedPracticePath {
   if (!params.tuning.length) throw new RangeError('tuning is required')
   const core = limitToPracticeAscent(params.notes, params.scaleType, params.tuning.length)
+  const descendingCore = params.exerciseType === 'threeNote' ? core : core.slice(0, -1)
+
   return {
     displayNotes: core,
     ascending: createAscendingExercise(core, params.exerciseType),
-    descending: createDescendingExercise(core, params.exerciseType),
+    descending: createDescendingExercise(descendingCore, params.exerciseType),
   }
 }

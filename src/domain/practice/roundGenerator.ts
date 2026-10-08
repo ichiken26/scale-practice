@@ -67,14 +67,16 @@ function buildPresentedRound(
   for (let index = 0; index < planned.length; index += 1) {
     const item = planned[index]
     if (!item) continue
+    const firstPath = index === 0
     const part = buildExerciseTimeline({
       ascending: item.run.ascending,
       descending: item.run.descending,
       exerciseType: context.settings.exerciseType,
-      previewBars: index === 0 ? 1 : 0,
+      announcementBars: firstPath ? 2 : 0,
+      previewBars: firstPath ? 2 : 0,
     })
     events.push(...part.events.map(event => ({ ...event, tick: event.tick + offset })))
-    if (index === 0) {
+    if (firstPath) {
       ascendingEndTick = part.ascendingEndTick
       descendingStartTick = part.descendingStartTick
     }

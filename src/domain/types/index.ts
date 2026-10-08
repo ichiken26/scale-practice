@@ -33,7 +33,14 @@ export interface PositionDrawResult { position: FretboardPosition|null; bag: Pos
 export interface ExerciseNote { note: FretboardNote; sourceIndex: number }
 export interface TimelineEvent { tick: number; durationTicks: number; type: 'note'|'metronome'|'announcement'|'preview'|'rest'; midi?: number; note?: FretboardNote; accent?: boolean }
 export interface ExerciseTimeline { events: readonly TimelineEvent[]; totalTicks: number; ascendingEndTick: number; descendingStartTick: number }
-export interface BuildExerciseTimelineParams { ascending: readonly ExerciseNote[]; descending: readonly ExerciseNote[]; exerciseType: ExerciseType; previewBars?: number; gapBars?: number }
+export interface BuildExerciseTimelineParams {
+  ascending: readonly ExerciseNote[]
+  descending: readonly ExerciseNote[]
+  exerciseType: ExerciseType
+  announcementBars?: number
+  previewBars?: number
+  gapBars?: number
+}
 export interface PracticeSettings { instrument: InstrumentType; tuning: readonly number[]; root: RootSelection; scaleType: ScaleType|'random'; exerciseType: ExerciseType; mode: PracticeMode; bpm: number; seed: number }
 export interface PracticeRound { id: string; combination: ScaleCombination; paths: readonly FretboardPath[]; timeline: ExerciseTimeline; debugEvents: readonly string[] }
 export interface RoundGenerationState { scaleBag: ScaleCombination[]; previousCombination: ScaleCombination|null; positionBags: Map<string,PositionBag> }

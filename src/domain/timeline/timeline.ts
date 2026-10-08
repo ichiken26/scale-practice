@@ -4,6 +4,8 @@ import { BAR_4_4, EIGHTH, QUARTER, QUARTER_TRIPLET } from './constants'
 const SOUNDED_SLOT_RATIO = 0.8
 const METRONOME_SPACING = QUARTER
 const CLICK_TICKS = 120
+const DEFAULT_ANNOUNCEMENT_BARS = 2
+const DEFAULT_PREVIEW_BARS = 2
 
 export function ticksPerExerciseNote(exercise: ExerciseType): number {
   return exercise === 'threeNote' ? QUARTER_TRIPLET : EIGHTH
@@ -33,13 +35,18 @@ function holdLanding(events: TimelineEvent[], phraseEndTick: number): void {
 export function buildExerciseTimeline(params: BuildExerciseTimelineParams): ExerciseTimeline {
   const step = ticksPerExerciseNote(params.exerciseType)
   const events: TimelineEvent[] = []
-  const preview = (params.previewBars ?? 1) * BAR_4_4
+  const announcement = (params.announcementBars ?? DEFAULT_ANNOUNCEMENT_BARS) * BAR_4_4
+  const preview = (params.previewBars ?? DEFAULT_PREVIEW_BARS) * BAR_4_4
   const gap = (params.gapBars ?? 0) * BAR_4_4
-  if (preview > 0) {
-    events.push({ tick: 0, durationTicks: preview, type: 'announcement' })
-    events.push({ tick: 0, durationTicks: preview, type: 'preview' })
+
+  if (announcement > 0) {
+    events.push({ tick: 0, durationTicks: announcement, type: 'announcement' })
   }
-  let tick = preview
+  if (preview > 0) {
+    events.push({ tick: announcement, durationTicks: preview, type: 'preview' })
+  }
+
+  let tick = announcement + preview
   for (const item of params.ascending) {
     pushNote(events, tick, step, item)
     tick += step

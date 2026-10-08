@@ -25,6 +25,20 @@ describe('tick timeline', () => {
     expect(ticksPerExerciseNote('fourNote')).toBe(EIGHTH)
   })
 
+  it('uses two bars of announcement followed by two bars of visible preview', () => {
+    const timeline = buildExerciseTimeline({
+      ascending: createAscendingExercise(notes, 'normal'),
+      descending: createDescendingExercise(notes, 'normal'),
+      exerciseType: 'normal',
+    })
+    const announcement = timeline.events.find(event => event.type === 'announcement')
+    const preview = timeline.events.find(event => event.type === 'preview')
+    const firstNote = timeline.events.find(event => event.type === 'note')
+    expect(announcement).toMatchObject({ tick: 0, durationTicks: BAR_4_4 * 2 })
+    expect(preview).toMatchObject({ tick: BAR_4_4 * 2, durationTicks: BAR_4_4 * 2 })
+    expect(firstNote?.tick).toBe(BAR_4_4 * 4)
+  })
+
   it('aligns and pads ascending to a bar boundary, reattacking apex', () => {
     const timeline = buildExerciseTimeline({
       ascending: createAscendingExercise(notes, 'normal'),
@@ -138,7 +152,7 @@ describe('clock and timing diagnostics', () => {
       exerciseType: 'normal',
     })
     expect(getVisualStateAtTick(timeline, 0).eventIndex).toBe(-1)
-    expect(getVisualStateAtTick(timeline, 5000).eventIndex).toBeGreaterThanOrEqual(1)
+    expect(getVisualStateAtTick(timeline, BAR_4_4 * 4 + 1200).eventIndex).toBeGreaterThanOrEqual(1)
   })
 
   it('computes absolute timing percentiles and recorder limits', () => {

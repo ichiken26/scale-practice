@@ -135,7 +135,7 @@ describe('exercise patterns', () => {
     expect(createDescendingExercise(notes, 'threeNote').slice(0, 3).map(item => item.note.midi)).toEqual([47, 46, 45])
   })
 
-  it('omits the apex from Normal and 4-note descending turns, but keeps it for 3-note', () => {
+  it('re-attacks the apex for Normal and 3-note, but not for 4-note', () => {
     const params = {
       notes,
       scaleType: 'major' as const,
@@ -145,7 +145,8 @@ describe('exercise patterns', () => {
 
     const normal = planPracticePath({ ...params, exerciseType: 'normal' })
     expect(normal.ascending.at(-1)?.note.midi).toBe(47)
-    expect(normal.descending[0]?.note.midi).toBe(46)
+    expect(normal.descending[0]?.note.midi).toBe(47)
+    expect(normal.descending[1]?.note.midi).toBe(46)
 
     const four = planPracticePath({ ...params, exerciseType: 'fourNote' })
     expect(four.ascending.at(-1)?.note.midi).toBe(47)

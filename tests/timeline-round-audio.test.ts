@@ -39,10 +39,10 @@ describe('tick timeline', () => {
     expect(firstNote?.tick).toBe(BAR_4_4 * 2)
   })
 
-  it('turns Normal around immediately without stretching the apex', () => {
+  it('turns Normal around immediately and re-attacks the apex', () => {
     const oddNotes = notes.slice(0, 7)
     const ascending = createAscendingExercise(oddNotes, 'normal')
-    const descending = createDescendingExercise(oddNotes.slice(0, -1), 'normal')
+    const descending = createDescendingExercise(oddNotes, 'normal')
     const timeline = buildExerciseTimeline({
       ascending,
       descending,
@@ -55,7 +55,8 @@ describe('tick timeline', () => {
     const musical = timeline.events.filter(event => event.type === 'note')
     const ascendingLast = musical[ascending.length - 1]
     expect(ascendingLast?.durationTicks).toBe(Math.round(EIGHTH * 0.8))
-    expect(musical[ascending.length]?.midi).toBe(oddNotes.at(-2)?.midi)
+    expect(musical[ascending.length]?.midi).toBe(oddNotes.at(-1)?.midi)
+    expect(musical[ascending.length + 1]?.midi).toBe(oddNotes.at(-2)?.midi)
   })
 
   it('keeps three-note turnaround bar-aligned', () => {
@@ -128,15 +129,20 @@ const settings = (mode: 'randomPosition' | 'fullNeck' = 'randomPosition'): Pract
 })
 
 describe('round generation integration', () => {
-  it('generates a deterministic random position round with a one-bar landing hold at the handoff', () => {
+  it('sustains the final descending note without re-attacking it at the handoff', () => {
     const a = generateRandomPositionRound({ settings: settings(), rng: createSeededRng(77) })
     const b = generateNextRound({ settings: settings(), rng: createSeededRng(77) })
     expect(a).toEqual(b)
     expect(a.paths).toHaveLength(1)
-    const landing = a.timeline.events.filter(event => event.type === 'note').at(-1)
-    expect(landing?.tick).toBe(a.timeline.totalTicks)
-    expect(landing?.durationTicks).toBe(BAR_4_4)
+
+    const notesOnly = a.timeline.events.filter(event => event.type === 'note')
+    const landing = notesOnly.at(-1)
+    expect(landing?.tick).toBeLessThan(a.timeline.totalTicks)
+    expect((landing?.tick ?? 0) + (landing?.durationTicks ?? 0)).toBe(a.timeline.totalTicks + BAR_4_4)
     expect(landing?.pathIndex).toBe(0)
+
+    const duplicateAtHandoff = notesOnly.filter(event => event.tick === a.timeline.totalTicks)
+    expect(duplicateAtHandoff).toHaveLength(0)
   })
 
   it('tags every Full Neck note with its exact path instead of estimating by round progress', () => {
@@ -147,10 +153,13 @@ describe('round generation integration', () => {
     for (let index = 0; index < round.paths.length; index += 1) {
       expect(noteEvents.some(event => event.pathIndex === index)).toBe(true)
     }
-    const landingHolds = noteEvents.filter(event => event.durationTicks === BAR_4_4)
-    expect(landingHolds.length).toBeGreaterThanOrEqual(round.paths.length)
-    const finalLanding = landingHolds.at(-1)
-    expect(finalLanding?.tick).toBe(round.timeline.totalTicks)
+    for (let index = 0; index < round.paths.length; index += 1) {
+      const pathEvents = noteEvents.filter(event => event.pathIndex === index)
+      expect(pathEvents.at(-1)?.durationTicks).toBeGreaterThan(EIGHTH)
+    }
+    const finalLanding = noteEvents.at(-1)
+    expect(finalLanding?.tick).toBeLessThan(round.timeline.totalTicks)
+    expect((finalLanding?.tick ?? 0) + (finalLanding?.durationTicks ?? 0)).toBe(round.timeline.totalTicks + BAR_4_4)
     expect(finalLanding?.pathIndex).toBe(round.paths.length - 1)
   })
 

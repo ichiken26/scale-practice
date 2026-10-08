@@ -56,22 +56,16 @@ function addTransitionClicks(events: TimelineEvent[], startTick: number): void {
   }
 }
 
-function addLandingHold(
+function sustainLandingThroughFirstTransitionBar(
   events: TimelineEvent[],
-  item: ReturnType<typeof planPracticePath>,
-  startTick: number,
+  transitionStartTick: number,
   pathIndex: number,
 ): void {
-  const landing = item.descending[item.descending.length - 1]
+  const landing = [...events].reverse().find(event => event.type === 'note' && event.pathIndex === pathIndex)
   if (!landing) return
-  events.push({
-    tick: startTick,
-    durationTicks: BAR_4_4,
-    type: 'note',
-    midi: landing.note.midi,
-    note: landing.note,
-    pathIndex,
-  })
+  const sustainEndTick = transitionStartTick + BAR_4_4
+  const duration = sustainEndTick - landing.tick
+  if (duration > landing.durationTicks) landing.durationTicks = duration
 }
 
 function buildPresentedRound(
@@ -119,17 +113,16 @@ function buildPresentedRound(
 
     offset += part.totalTicks
 
-    // Re-attack the final descending note and sustain it for one full bar.
-    // That held bar is the first half of the fixed two-bar / eight-count transition.
-    addLandingHold(events, item.run, offset, index)
+    // Do not strike the landing note a second time. Extend the already-sounding
+    // final descending note through the first bar of the eight-count transition.
+    sustainLandingThroughFirstTransitionBar(events, offset, index)
 
     if (index < planned.length - 1) {
       addTransitionClicks(events, offset)
       offset += PATH_TRANSITION_TICKS
     }
-    // For the final path, do not add another transition to this round. The next
-    // round starts exactly here and its two-bar preview supplies the eight clicks,
-    // while this round's landing note continues through the first preview bar.
+    // For the final path, the next round begins at this offset. Its two-bar preview
+    // provides the eight clicks while the previous landing sustains through bar one.
   }
 
   return {

@@ -10,12 +10,13 @@ function memory() {
 }
 
 describe('settings persistence', () => {
-  it('defaults guitar to 6 strings and bass to 4 with automatic root selection', () => {
+  it('defaults to guitar, automatic root selection, and Major', () => {
     const settings = defaultSettings()
     expect(settings.guitar).toEqual({ stringCount: 6, tuningId: 'guitar-6-standard' })
     expect(settings.bass).toEqual({ stringCount: 4, tuningId: 'bass-4-standard' })
     expect(settings.instrument).toBe('guitar')
     expect(settings.root).toBe('auto')
+    expect(settings.scaleType).toBe('major')
     expect(settings.fretboardLabelMode).toBe('note')
   })
 
@@ -73,7 +74,7 @@ describe('settings persistence', () => {
     expect(saved.guitar).toEqual({ stringCount: 6, tuningId: 'guitar-6-standard' })
     expect(saved.bass.stringCount).toBe(4)
     expect(saved.root).toBe('auto')
-    expect(saved.scaleType).toBe('random')
+    expect(saved.scaleType).toBe('major')
     expect(saved.exerciseType).toBe('normal')
     expect(saved.mode).toBe('randomPosition')
     expect(saved.fretboardLabelMode).toBe('note')

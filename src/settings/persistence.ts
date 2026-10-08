@@ -33,7 +33,7 @@ export function defaultSettings(): PersistedSettings {
     guitar: { stringCount: 6, tuningId: 'guitar-6-standard' },
     bass: { stringCount: 4, tuningId: 'bass-4-standard' },
     root: 'auto',
-    scaleType: 'random',
+    scaleType: 'major',
     exerciseType: 'normal',
     mode: 'randomPosition',
     fretboardLabelMode: 'note',

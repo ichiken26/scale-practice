@@ -1,4 +1,4 @@
-import type { AudioClockSnapshot, ExerciseTimeline, VisualTimelineState } from '../domain/types'
+import type { AudioClockSnapshot, ExerciseTimeline, TimelineEvent, VisualTimelineState } from '../domain/types'
 
 function finiteLatency(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : 0
@@ -37,16 +37,42 @@ export function timelineTickAtContextTime(contextTime: number, sessionStart: num
   return (contextTime - sessionStart) * bpm / 60 * 960
 }
 
-export function getVisualStateAtTick(timeline: ExerciseTimeline, tick: number): VisualTimelineState {
-  const musical = timeline.events.filter(event => event.type === 'note')
-  let index = -1
-  for (let current = 0; current < musical.length; current += 1) {
-    if ((musical[current] as typeof musical[number]).tick <= tick) index = current
+function upperBoundByTick(events: readonly TimelineEvent[], tick: number): number {
+  let low = 0
+  let high = events.length
+  while (low < high) {
+    const middle = (low + high) >>> 1
+    const event = events[middle]
+    if (event && event.tick <= tick) low = middle + 1
+    else high = middle
   }
-  const current = index >= 0 ? (musical[index] ?? null) : null
-  const next = musical[index + 1] ?? null
+  return low
+}
+
+function findPreviousNote(events: readonly TimelineEvent[], fromExclusive: number): number {
+  for (let index = fromExclusive - 1; index >= 0; index -= 1) {
+    if (events[index]?.type === 'note') return index
+  }
+  return -1
+}
+
+function findNextNote(events: readonly TimelineEvent[], fromInclusive: number): number {
+  for (let index = fromInclusive; index < events.length; index += 1) {
+    if (events[index]?.type === 'note') return index
+  }
+  return -1
+}
+
+export function getVisualStateAtTick(timeline: ExerciseTimeline, tick: number): VisualTimelineState {
+  const insertion = upperBoundByTick(timeline.events, tick)
+  const previousNoteIndex = findPreviousNote(timeline.events, insertion)
+  const previous = previousNoteIndex >= 0 ? timeline.events[previousNoteIndex] ?? null : null
+  const current = previous && tick < previous.tick + previous.durationTicks ? previous : null
+  const nextSearchStart = current ? previousNoteIndex + 1 : insertion
+  const nextNoteIndex = findNextNote(timeline.events, nextSearchStart)
+  const next = nextNoteIndex >= 0 ? timeline.events[nextNoteIndex] ?? null : null
   const progress = current
     ? Math.max(0, Math.min(1, (tick - current.tick) / Math.max(1, current.durationTicks)))
     : 0
-  return { currentEvent: current, nextEvent: next, eventIndex: index, progress }
+  return { currentEvent: current, nextEvent: next, eventIndex: current ? previousNoteIndex : -1, progress }
 }

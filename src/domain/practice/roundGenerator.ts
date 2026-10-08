@@ -56,7 +56,12 @@ function addTransitionClicks(events: TimelineEvent[], startTick: number): void {
   }
 }
 
-function addLandingHold(events: TimelineEvent[], item: ReturnType<typeof planPracticePath>, startTick: number): void {
+function addLandingHold(
+  events: TimelineEvent[],
+  item: ReturnType<typeof planPracticePath>,
+  startTick: number,
+  pathIndex: number,
+): void {
   const landing = item.descending[item.descending.length - 1]
   if (!landing) return
   events.push({
@@ -65,6 +70,7 @@ function addLandingHold(events: TimelineEvent[], item: ReturnType<typeof planPra
     type: 'note',
     midi: landing.note.midi,
     note: landing.note,
+    pathIndex,
   })
 }
 
@@ -100,7 +106,11 @@ function buildPresentedRound(
       previewBars: firstPath ? 2 : 0,
     })
 
-    events.push(...part.events.map(event => ({ ...event, tick: event.tick + offset })))
+    events.push(...part.events.map(event => ({
+      ...event,
+      tick: event.tick + offset,
+      ...(event.type === 'note' ? { pathIndex: index } : {}),
+    })))
 
     if (firstPath) {
       ascendingEndTick = part.ascendingEndTick
@@ -111,7 +121,7 @@ function buildPresentedRound(
 
     // Re-attack the final descending note and sustain it for one full bar.
     // That held bar is the first half of the fixed two-bar / eight-count transition.
-    addLandingHold(events, item.run, offset)
+    addLandingHold(events, item.run, offset, index)
 
     if (index < planned.length - 1) {
       addTransitionClicks(events, offset)

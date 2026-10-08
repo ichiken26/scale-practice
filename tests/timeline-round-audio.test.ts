@@ -99,17 +99,22 @@ describe('round generation integration', () => {
     const landing = a.timeline.events.filter(event => event.type === 'note').at(-1)
     expect(landing?.tick).toBe(a.timeline.totalTicks)
     expect(landing?.durationTicks).toBe(BAR_4_4)
+    expect(landing?.pathIndex).toBe(0)
   })
 
-  it('generates full neck paths with exact two-bar transitions between paths', () => {
+  it('tags every Full Neck note with its exact path instead of estimating by round progress', () => {
     const round = generateFullNeckRound({ settings: settings('fullNeck'), rng: createSeededRng(77) })
     expect(round.paths.length).toBeGreaterThan(3)
-    const landingHolds = round.timeline.events.filter(event =>
-      event.type === 'note' && event.durationTicks === BAR_4_4,
-    )
+    const noteEvents = round.timeline.events.filter(event => event.type === 'note')
+    expect(noteEvents.every(event => typeof event.pathIndex === 'number')).toBe(true)
+    for (let index = 0; index < round.paths.length; index += 1) {
+      expect(noteEvents.some(event => event.pathIndex === index)).toBe(true)
+    }
+    const landingHolds = noteEvents.filter(event => event.durationTicks === BAR_4_4)
     expect(landingHolds.length).toBeGreaterThanOrEqual(round.paths.length)
     const finalLanding = landingHolds.at(-1)
     expect(finalLanding?.tick).toBe(round.timeline.totalTicks)
+    expect(finalLanding?.pathIndex).toBe(round.paths.length - 1)
   })
 
   it.each([
@@ -173,6 +178,23 @@ describe('clock and timing diagnostics', () => {
     })
     expect(estimateAudibleContextTime(snapshot, 2000)).toBeCloseTo(3.95)
     Object.defineProperty(globalThis, 'performance', { value: old, configurable: true })
+  })
+
+  it('does not keep a stale current note during a rest and exposes the exact next path', () => {
+    const timeline = {
+      events: [
+        { tick: 0, durationTicks: 100, type: 'note' as const, pathIndex: 0 },
+        { tick: 1000, durationTicks: 100, type: 'note' as const, pathIndex: 1 },
+      ],
+      totalTicks: 2000,
+      ascendingEndTick: 0,
+      descendingStartTick: 0,
+    }
+    const sounding = getVisualStateAtTick(timeline, 50)
+    expect(sounding.currentEvent?.pathIndex).toBe(0)
+    const rest = getVisualStateAtTick(timeline, 500)
+    expect(rest.currentEvent).toBeNull()
+    expect(rest.nextEvent?.pathIndex).toBe(1)
   })
 
   it('recomputes visual state after arbitrary frame jumps', () => {

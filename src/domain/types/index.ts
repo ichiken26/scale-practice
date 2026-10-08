@@ -31,7 +31,15 @@ export interface PositionBagKeyParams extends ScaleCombination { tuning: readonl
 export interface PositionBag { remaining: readonly FretboardPosition[]; all: readonly FretboardPosition[]; previousPositionId: string|null }
 export interface PositionDrawResult { position: FretboardPosition|null; bag: PositionBag }
 export interface ExerciseNote { note: FretboardNote; sourceIndex: number }
-export interface TimelineEvent { tick: number; durationTicks: number; type: 'note'|'metronome'|'announcement'|'preview'|'rest'; midi?: number; note?: FretboardNote; accent?: boolean }
+export interface TimelineEvent {
+  tick: number
+  durationTicks: number
+  type: 'note'|'metronome'|'announcement'|'preview'|'rest'
+  midi?: number
+  note?: FretboardNote
+  accent?: boolean
+  pathIndex?: number
+}
 export interface ExerciseTimeline { events: readonly TimelineEvent[]; totalTicks: number; ascendingEndTick: number; descendingStartTick: number }
 export interface BuildExerciseTimelineParams {
   ascending: readonly ExerciseNote[]

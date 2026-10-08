@@ -221,6 +221,12 @@ function animate() {
   const active = round.value
   if (!active) return
   visual.value = getVisualStateAtTick(active.timeline, tick)
+
+  const timelinePathIndex = visual.value.currentEvent?.pathIndex ?? visual.value.nextEvent?.pathIndex
+  if (typeof timelinePathIndex === 'number') {
+    pathIndex.value = Math.max(0, Math.min(active.paths.length - 1, timelinePathIndex))
+  }
+
   const currentEvent = visual.value.currentEvent
   if (currentEvent && visual.value.eventIndex !== lastRecordedEvent) {
     const expected = tickToContextTime(currentEvent.tick, bpm.value, sessionStart)
@@ -240,9 +246,6 @@ function animate() {
     lastRecordedEvent = visual.value.eventIndex
   }
   lastFramePerformance = now
-  if (active.paths.length > 1) {
-    pathIndex.value = Math.min(active.paths.length - 1, Math.floor(Math.max(0, tick) / active.timeline.totalTicks * active.paths.length))
-  }
   frame = requestAnimationFrame(animate)
 }
 

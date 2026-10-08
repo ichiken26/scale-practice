@@ -9,7 +9,7 @@ import { planPracticePath } from './ascent'
 import { buildExerciseTimeline } from '../timeline/timeline'
 import { BAR_4_4, QUARTER } from '../timeline/constants'
 
-const PATH_GAP_TICKS = BAR_4_4 * 2
+const PATH_TRANSITION_TICKS = BAR_4_4 * 2
 const CLICK_TICKS = 120
 
 function previousCombination(context: RoundGenerationContext): ScaleCombination | null {
@@ -45,6 +45,29 @@ function compareEvents(a: TimelineEvent, b: TimelineEvent): number {
   return a.tick - b.tick || (a.type === 'metronome' ? -1 : 1)
 }
 
+function addTransitionClicks(events: TimelineEvent[], startTick: number): void {
+  for (let beat = 0; beat < PATH_TRANSITION_TICKS; beat += QUARTER) {
+    events.push({
+      tick: startTick + beat,
+      durationTicks: CLICK_TICKS,
+      type: 'metronome',
+      accent: beat % BAR_4_4 === 0,
+    })
+  }
+}
+
+function addLandingHold(events: TimelineEvent[], item: ReturnType<typeof planPracticePath>, startTick: number): void {
+  const landing = item.descending[item.descending.length - 1]
+  if (!landing) return
+  events.push({
+    tick: startTick,
+    durationTicks: BAR_4_4,
+    type: 'note',
+    midi: landing.note.midi,
+    note: landing.note,
+  })
+}
+
 function buildPresentedRound(
   context: RoundGenerationContext,
   combination: ScaleCombination,
@@ -64,6 +87,7 @@ function buildPresentedRound(
   const events: TimelineEvent[] = []
   let ascendingEndTick = 0
   let descendingStartTick = 0
+
   for (let index = 0; index < planned.length; index += 1) {
     const item = planned[index]
     if (!item) continue
@@ -75,24 +99,29 @@ function buildPresentedRound(
       announcementBars: 0,
       previewBars: firstPath ? 2 : 0,
     })
+
     events.push(...part.events.map(event => ({ ...event, tick: event.tick + offset })))
+
     if (firstPath) {
       ascendingEndTick = part.ascendingEndTick
       descendingStartTick = part.descendingStartTick
     }
+
     offset += part.totalTicks
+
+    // Re-attack the final descending note and sustain it for one full bar.
+    // That held bar is the first half of the fixed two-bar / eight-count transition.
+    addLandingHold(events, item.run, offset)
+
     if (index < planned.length - 1) {
-      for (let beat = 0; beat < PATH_GAP_TICKS; beat += QUARTER) {
-        events.push({
-          tick: offset + beat,
-          durationTicks: CLICK_TICKS,
-          type: 'metronome',
-          accent: beat % BAR_4_4 === 0,
-        })
-      }
-      offset += PATH_GAP_TICKS
+      addTransitionClicks(events, offset)
+      offset += PATH_TRANSITION_TICKS
     }
+    // For the final path, do not add another transition to this round. The next
+    // round starts exactly here and its two-bar preview supplies the eight clicks,
+    // while this round's landing note continues through the first preview bar.
   }
+
   return {
     paths: planned.map(({ path, run }) => ({ ...path, notes: run.displayNotes })),
     timeline: {

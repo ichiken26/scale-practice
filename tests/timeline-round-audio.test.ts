@@ -39,17 +39,30 @@ describe('tick timeline', () => {
     expect(firstNote?.tick).toBe(BAR_4_4 * 2)
   })
 
-  it('aligns and pads ascending to a bar boundary, reattacking apex', () => {
+  it('holds ascent to the next bar and reattacks the apex on the downbeat', () => {
+    const oddNotes = notes.slice(0, 7)
     const timeline = buildExerciseTimeline({
-      ascending: createAscendingExercise(notes, 'normal'),
-      descending: createDescendingExercise(notes, 'normal'),
+      ascending: createAscendingExercise(oddNotes, 'normal'),
+      descending: createDescendingExercise(oddNotes, 'normal'),
       exerciseType: 'normal',
     })
     expect(timeline.descendingStartTick % BAR_4_4).toBe(0)
     const musical = timeline.events.filter(event => event.type === 'note')
-    expect(musical.filter(event => event.midi === notes.at(-1)?.midi)).toHaveLength(2)
+    const apexEvents = musical.filter(event => event.midi === oddNotes.at(-1)?.midi)
+    expect(apexEvents).toHaveLength(2)
+    expect(apexEvents[0]?.tick + (apexEvents[0]?.durationTicks ?? 0)).toBe(timeline.descendingStartTick)
+    expect(apexEvents[1]?.tick).toBe(timeline.descendingStartTick)
+  })
+
+  it('aligns the descending phrase end to a bar boundary', () => {
+    const timeline = buildExerciseTimeline({
+      ascending: createAscendingExercise(notes.slice(0, 7), 'normal'),
+      descending: createDescendingExercise(notes.slice(0, 7), 'normal'),
+      exerciseType: 'normal',
+    })
     expect(timeline.totalTicks % BAR_4_4).toBe(0)
-    expect(musical[7]?.durationTicks).toBeGreaterThanOrEqual(384)
+    const lastPhraseNote = timeline.events.filter(event => event.type === 'note').at(-1)
+    expect((lastPhraseNote?.tick ?? 0) + (lastPhraseNote?.durationTicks ?? 0)).toBe(timeline.totalTicks)
   })
 
   it('derives absolute context time without accumulation at BPM boundaries', () => {
@@ -78,18 +91,25 @@ const settings = (mode: 'randomPosition' | 'fullNeck' = 'randomPosition'): Pract
 })
 
 describe('round generation integration', () => {
-  it('generates a deterministic random position round', () => {
+  it('generates a deterministic random position round with a one-bar landing hold at the handoff', () => {
     const a = generateRandomPositionRound({ settings: settings(), rng: createSeededRng(77) })
     const b = generateNextRound({ settings: settings(), rng: createSeededRng(77) })
     expect(a).toEqual(b)
     expect(a.paths).toHaveLength(1)
-    expect(a.timeline.totalTicks).toBeGreaterThan(0)
+    const landing = a.timeline.events.filter(event => event.type === 'note').at(-1)
+    expect(landing?.tick).toBe(a.timeline.totalTicks)
+    expect(landing?.durationTicks).toBe(BAR_4_4)
   })
 
-  it('generates full neck positions and distinct extended paths with two-bar gaps', () => {
+  it('generates full neck paths with exact two-bar transitions between paths', () => {
     const round = generateFullNeckRound({ settings: settings('fullNeck'), rng: createSeededRng(77) })
     expect(round.paths.length).toBeGreaterThan(3)
-    expect(round.timeline.totalTicks).toBeGreaterThan(BAR_4_4 * round.paths.length * 2)
+    const landingHolds = round.timeline.events.filter(event =>
+      event.type === 'note' && event.durationTicks === BAR_4_4,
+    )
+    expect(landingHolds.length).toBeGreaterThanOrEqual(round.paths.length)
+    const finalLanding = landingHolds.at(-1)
+    expect(finalLanding?.tick).toBe(round.timeline.totalTicks)
   })
 
   it.each([

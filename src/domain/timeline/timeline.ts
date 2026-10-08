@@ -20,16 +20,11 @@ function pushNote(events: TimelineEvent[], tick: number, step: number, item: Exe
   events.push({ tick, durationTicks: Math.round(step * SOUNDED_SLOT_RATIO), type: 'note', midi: item.note.midi, note: item.note })
 }
 
-/** A landing may absorb one leftover subdivision, and never grows past a quarter note. */
-function holdLanding(events: TimelineEvent[], phraseEndTick: number): void {
-  const bar = alignTickToNextBar(phraseEndTick)
-  const gap = bar - phraseEndTick
-  if (gap <= 0) return
-  const last = [...events].reverse().find(event => event.type === 'note' && event.tick < phraseEndTick)
+function extendLastNoteTo(events: TimelineEvent[], targetTick: number): void {
+  const last = [...events].reverse().find(event => event.type === 'note' && event.tick < targetTick)
   if (!last) return
-  const untilBar = bar - last.tick
-  if (untilBar <= 0 || untilBar > QUARTER) return
-  last.durationTicks = untilBar
+  const duration = targetTick - last.tick
+  if (duration > 0) last.durationTicks = duration
 }
 
 export function buildExerciseTimeline(params: BuildExerciseTimelineParams): ExerciseTimeline {
@@ -51,18 +46,24 @@ export function buildExerciseTimeline(params: BuildExerciseTimelineParams): Exer
     pushNote(events, tick, step, item)
     tick += step
   }
+
   const ascendingEndTick = tick
-  const descendingStartTick = tick + gap
+  const descendingStartTick = alignTickToNextBar(ascendingEndTick) + gap
+  extendLastNoteTo(events, descendingStartTick)
+
   tick = descendingStartTick
   for (const item of params.descending) {
     pushNote(events, tick, step, item)
     tick += step
   }
-  holdLanding(events, tick)
+
   const totalTicks = alignTickToNextBar(tick)
+  extendLastNoteTo(events, totalTicks)
+
   for (let beat = 0; beat < totalTicks; beat += METRONOME_SPACING) {
     events.push({ tick: beat, durationTicks: CLICK_TICKS, type: 'metronome', accent: beat % BAR_4_4 === 0 })
   }
+
   return {
     events: events.sort((a, b) => a.tick - b.tick || (a.type === 'metronome' ? -1 : 1)),
     totalTicks,

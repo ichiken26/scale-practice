@@ -58,8 +58,15 @@ export function buildExerciseTimeline(params: BuildExerciseTimelineParams): Exer
     tick += step
   }
 
-  const totalTicks = alignTickToNextBar(tick)
-  extendLastNoteTo(events, totalTicks)
+  // Normal / 4-note hand off at the onset of the final descending note.
+  // This lets the following two-bar transition be exactly eight beats from
+  // the final attack, with the landing note itself sustained across bar one.
+  const lastNote = [...events].reverse().find(event => event.type === 'note')
+  const totalTicks = params.exerciseType === 'threeNote'
+    ? alignTickToNextBar(tick)
+    : lastNote?.tick ?? tick
+
+  if (params.exerciseType === 'threeNote') extendLastNoteTo(events, totalTicks)
 
   for (let beat = 0; beat < totalTicks; beat += METRONOME_SPACING) {
     events.push({ tick: beat, durationTicks: CLICK_TICKS, type: 'metronome', accent: beat % BAR_4_4 === 0 })

@@ -94,11 +94,21 @@ describe('tick timeline', () => {
     expect(musical[ascending.length]?.midi).toBe(oddNotes.at(-1)?.midi)
   })
 
-  it('aligns the descending phrase end to a bar boundary', () => {
+  it('hands Normal off on the final descending attack instead of adding bar padding', () => {
     const timeline = buildExerciseTimeline({
       ascending: createAscendingExercise(notes.slice(0, 7), 'normal'),
       descending: createDescendingExercise(notes.slice(0, 7), 'normal'),
       exerciseType: 'normal',
+    })
+    const lastPhraseNote = timeline.events.filter(event => event.type === 'note').at(-1)
+    expect(lastPhraseNote?.tick).toBe(timeline.totalTicks)
+  })
+
+  it('keeps three-note phrase endings bar-aligned', () => {
+    const timeline = buildExerciseTimeline({
+      ascending: createAscendingExercise(notes.slice(0, 7), 'threeNote'),
+      descending: createDescendingExercise(notes.slice(0, 7), 'threeNote'),
+      exerciseType: 'threeNote',
     })
     expect(timeline.totalTicks % BAR_4_4).toBe(0)
     const lastPhraseNote = timeline.events.filter(event => event.type === 'note').at(-1)
@@ -131,7 +141,7 @@ const settings = (mode: 'randomPosition' | 'fullNeck' = 'randomPosition'): Pract
 })
 
 describe('round generation integration', () => {
-  it('sustains the final descending note without re-attacking it at the handoff', () => {
+  it('starts the eight-count handoff on the final Normal landing attack', () => {
     const a = generateRandomPositionRound({ settings: settings(), rng: createSeededRng(77) })
     const b = generateNextRound({ settings: settings(), rng: createSeededRng(77) })
     expect(a).toEqual(b)
@@ -139,29 +149,31 @@ describe('round generation integration', () => {
 
     const notesOnly = a.timeline.events.filter(event => event.type === 'note')
     const landing = notesOnly.at(-1)
-    expect(landing?.tick).toBeLessThan(a.timeline.totalTicks)
-    expect((landing?.tick ?? 0) + (landing?.durationTicks ?? 0)).toBe(a.timeline.totalTicks + BAR_4_4)
+    expect(landing?.tick).toBe(a.timeline.totalTicks)
+    expect(landing?.durationTicks).toBe(BAR_4_4)
     expect(landing?.pathIndex).toBe(0)
-
-    const duplicateAtHandoff = notesOnly.filter(event => event.tick === a.timeline.totalTicks)
-    expect(duplicateAtHandoff).toHaveLength(0)
   })
 
-  it('tags every Full Neck note with its exact path instead of estimating by round progress', () => {
+  it('keeps Full Neck path selection exact and leaves exactly eight beats after each Normal landing', () => {
     const round = generateFullNeckRound({ settings: settings('fullNeck'), rng: createSeededRng(77) })
     expect(round.paths.length).toBeGreaterThan(3)
     const noteEvents = round.timeline.events.filter(event => event.type === 'note')
     expect(noteEvents.every(event => typeof event.pathIndex === 'number')).toBe(true)
-    for (let index = 0; index < round.paths.length; index += 1) {
-      expect(noteEvents.some(event => event.pathIndex === index)).toBe(true)
-    }
+
     for (let index = 0; index < round.paths.length; index += 1) {
       const pathEvents = noteEvents.filter(event => event.pathIndex === index)
-      expect(pathEvents.at(-1)?.durationTicks).toBeGreaterThan(EIGHTH)
+      expect(pathEvents.length).toBeGreaterThan(0)
+      const landing = pathEvents.at(-1)
+      expect(landing?.durationTicks).toBe(BAR_4_4)
+
+      if (index < round.paths.length - 1) {
+        const nextPathFirst = noteEvents.find(event => event.pathIndex === index + 1)
+        expect((nextPathFirst?.tick ?? 0) - (landing?.tick ?? 0)).toBe(BAR_4_4 * 2)
+      }
     }
+
     const finalLanding = noteEvents.at(-1)
-    expect(finalLanding?.tick).toBeLessThan(round.timeline.totalTicks)
-    expect((finalLanding?.tick ?? 0) + (finalLanding?.durationTicks ?? 0)).toBe(round.timeline.totalTicks + BAR_4_4)
+    expect(finalLanding?.tick).toBe(round.timeline.totalTicks)
     expect(finalLanding?.pathIndex).toBe(round.paths.length - 1)
   })
 

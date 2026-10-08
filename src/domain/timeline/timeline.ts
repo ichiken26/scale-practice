@@ -4,7 +4,7 @@ import { BAR_4_4, EIGHTH, QUARTER, QUARTER_TRIPLET } from './constants'
 const SOUNDED_SLOT_RATIO = 0.8
 const METRONOME_SPACING = QUARTER
 const CLICK_TICKS = 120
-const DEFAULT_ANNOUNCEMENT_BARS = 2
+const DEFAULT_ANNOUNCEMENT_BARS = 0
 const DEFAULT_PREVIEW_BARS = 2
 
 export function ticksPerExerciseNote(exercise: ExerciseType): number {

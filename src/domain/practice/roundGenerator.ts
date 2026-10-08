@@ -72,7 +72,7 @@ function buildPresentedRound(
       ascending: item.run.ascending,
       descending: item.run.descending,
       exerciseType: context.settings.exerciseType,
-      announcementBars: firstPath ? 2 : 0,
+      announcementBars: 0,
       previewBars: firstPath ? 2 : 0,
     })
     events.push(...part.events.map(event => ({ ...event, tick: event.tick + offset })))

@@ -33,7 +33,6 @@ const playing = ref(false)
 const loading = ref(false)
 const round = ref<PracticeRound | null>(null)
 const visual = ref<VisualTimelineState>({ currentEvent: null, nextEvent: null, eventIndex: -1, progress: 0 })
-const timelineTick = ref(0)
 const pathIndex = ref(0)
 const metronomeVolume = ref(stored.metronomeVolume)
 const referenceVolume = ref(stored.referenceVolume)
@@ -41,10 +40,6 @@ const error = ref('')
 const tuning = computed(() => getTuningPresets(instrument.value, stringCount.value).find(item => item.id === tuningId.value)?.midi ?? getTuningPresets(instrument.value, stringCount.value)[0]?.midi ?? [])
 const selectedScale = computed(() => round.value?.combination.scaleType ?? null)
 const selectedRoot = computed(() => round.value?.combination.root ?? null)
-const previewStartTick = computed(() => round.value?.timeline.events.find(event => event.type === 'preview')?.tick ?? 0)
-const scaleDetailsVisible = computed(() => !playing.value || timelineTick.value >= previewStartTick.value)
-const visibleScale = computed(() => scaleDetailsVisible.value ? selectedScale.value : null)
-const visibleRoot = computed(() => scaleDetailsVisible.value ? selectedRoot.value : null)
 const currentPath = computed(() => round.value?.paths[pathIndex.value]?.notes ?? [])
 const currentMidi = computed(() => visual.value.currentEvent?.note?.midi ?? visual.value.currentEvent?.midi ?? null)
 const lowMidi = computed(() => currentPath.value.length ? Math.min(...currentPath.value.map(note => note.midi)) : null)
@@ -157,7 +152,6 @@ async function start() {
   sessionToken += 1
   loading.value = true
   error.value = ''
-  timelineTick.value = 0
   try {
     worker?.dispose()
     worker = new ExerciseWorkerClient()
@@ -193,7 +187,6 @@ function stop() {
   playing.value = false
   nextRound = null
   nextSessionStart = 0
-  timelineTick.value = 0
   cancelAnimationFrame(frame)
   audio.stop()
   void wakeLock?.release()
@@ -227,7 +220,6 @@ function animate() {
   }
   const active = round.value
   if (!active) return
-  timelineTick.value = tick
   visual.value = getVisualStateAtTick(active.timeline, tick)
   const currentEvent = visual.value.currentEvent
   if (currentEvent && visual.value.eventIndex !== lastRecordedEvent) {
@@ -284,7 +276,7 @@ onBeforeUnmount(() => {
 <template>
   <main>
     <div v-if="needRefresh && !playing" class="update">A new version is ready. <button @click="updateServiceWorker(true)">Update</button></div>
-    <ScaleHeader :combination="round?.combination ?? null" :show-notes="scaleDetailsVisible" />
+    <ScaleHeader :combination="round?.combination ?? null" />
     <SettingsPanel
       :instrument="instrument"
       :string-count="stringCount"
@@ -317,8 +309,8 @@ onBeforeUnmount(() => {
       </div>
       <FretboardView
         :tuning="tuning"
-        :root="visibleRoot"
-        :scale-type="visibleScale"
+        :root="selectedRoot"
+        :scale-type="selectedScale"
         :path="currentPath"
         :current="visual.currentEvent?.note ?? null"
         :label-mode="fretboardLabelMode"
@@ -327,7 +319,7 @@ onBeforeUnmount(() => {
         <TransportControls :playing="playing" :loading="loading" @toggle="toggle" />
       </div>
     </section>
-    <KeyboardView :root="visibleRoot" :scale-type="visibleScale" :current-midi="currentMidi" :low-midi="lowMidi" :high-midi="highMidi" />
+    <KeyboardView :root="selectedRoot" :scale-type="selectedScale" :current-midi="currentMidi" :low-midi="lowMidi" :high-midi="highMidi" />
     <DebugPanel :seed="seed" :stats="recorder.stats()" :events="round?.debugEvents ?? []" />
   </main>
 </template>

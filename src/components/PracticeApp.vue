@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue'
 import { useRegisterSW } from 'virtual:pwa-register/vue'
-import type { ExerciseType, InstrumentType, PracticeMode, PracticeRound, RootSelection, ScaleType, VisualTimelineState } from '../domain/types'
+import type { ExerciseType, FretboardLabelMode, InstrumentType, PracticeMode, PracticeRound, RootSelection, ScaleType, VisualTimelineState } from '../domain/types'
 import { getTuningPresets } from '../domain/music/tuning'
 import { randomSeed } from '../domain/random/rng'
 import { loadSettings, saveSettings, type InstrumentPreference, type PersistedSettings } from '../settings/persistence'
@@ -26,6 +26,7 @@ const rootSelection = ref<RootSelection>(stored.root)
 const scaleType = ref<ScaleType | 'random'>(stored.scaleType)
 const exerciseType = ref<ExerciseType>(stored.exerciseType)
 const mode = ref<PracticeMode>(stored.mode)
+const fretboardLabelMode = ref<FretboardLabelMode>(stored.fretboardLabelMode)
 const bpm = ref(stored.bpm)
 const seed = ref(randomSeed())
 const playing = ref(false)
@@ -57,7 +58,7 @@ let arming = false
 let sessionToken = 0
 const { needRefresh, updateServiceWorker } = useRegisterSW({ immediate: true })
 
-watch([rootSelection, scaleType, exerciseType, mode, bpm, metronomeVolume, referenceVolume], () => persist())
+watch([rootSelection, scaleType, exerciseType, mode, fretboardLabelMode, bpm, metronomeVolume, referenceVolume], () => persist())
 watch([metronomeVolume, referenceVolume], () => { audio.setVolumes(metronomeVolume.value, referenceVolume.value) })
 
 function resolveTuning(nextInstrument: InstrumentType, count: number, id: string): string {
@@ -80,6 +81,7 @@ function persist() {
     scaleType: scaleType.value,
     exerciseType: exerciseType.value,
     mode: mode.value,
+    fretboardLabelMode: fretboardLabelMode.value,
     bpm: bpm.value,
     metronomeVolume: metronomeVolume.value,
     referenceVolume: referenceVolume.value,
@@ -283,6 +285,7 @@ onBeforeUnmount(() => {
       :scale-type="scaleType"
       :exercise-type="exerciseType"
       :mode="mode"
+      :fretboard-label-mode="fretboardLabelMode"
       :bpm="bpm"
       :metronome-volume="metronomeVolume"
       :reference-volume="referenceVolume"
@@ -294,6 +297,7 @@ onBeforeUnmount(() => {
       @update:scale-type="scaleType = $event"
       @update:exercise-type="exerciseType = $event"
       @update:mode="mode = $event"
+      @update:fretboard-label-mode="fretboardLabelMode = $event"
       @update:bpm="bpm = $event"
       @update:metronome-volume="metronomeVolume = $event"
       @update:reference-volume="referenceVolume = $event"
@@ -303,7 +307,14 @@ onBeforeUnmount(() => {
       <div class="progress">
         <span>{{ mode === 'fullNeck' && round ? `Position ${pathIndex + 1} / ${round.paths.length}` : playing ? 'Now play!!' : 'Ready' }}</span>
       </div>
-      <FretboardView :tuning="tuning" :root="selectedRoot" :scale-type="selectedScale" :path="currentPath" :current="visual.currentEvent?.note ?? null" />
+      <FretboardView
+        :tuning="tuning"
+        :root="selectedRoot"
+        :scale-type="selectedScale"
+        :path="currentPath"
+        :current="visual.currentEvent?.note ?? null"
+        :label-mode="fretboardLabelMode"
+      />
       <div class="controls">
         <TransportControls :playing="playing" :loading="loading" @toggle="toggle" />
       </div>

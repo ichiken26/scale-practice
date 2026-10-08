@@ -16,9 +16,10 @@ describe('settings persistence', () => {
     expect(settings.bass).toEqual({ stringCount: 4, tuningId: 'bass-4-standard' })
     expect(settings.instrument).toBe('guitar')
     expect(settings.root).toBe('auto')
+    expect(settings.fretboardLabelMode).toBe('note')
   })
 
-  it('round-trips every setting, including a fixed root and a bass remembered at 5 strings', () => {
+  it('round-trips every setting, including fretboard interval labels', () => {
     const storage = memory()
     const settings = defaultSettings()
     settings.instrument = 'bass'
@@ -28,6 +29,7 @@ describe('settings persistence', () => {
     settings.scaleType = 'harmonicMinor'
     settings.exerciseType = 'fourNote'
     settings.mode = 'fullNeck'
+    settings.fretboardLabelMode = 'degree'
     settings.bpm = 40
     settings.metronomeVolume = 0
     settings.referenceVolume = 1
@@ -41,11 +43,13 @@ describe('settings persistence', () => {
       guitar: { stringCount: 7, tuningId: 'guitar-7-standard' },
       bass: { stringCount: 6, tuningId: 'bass-6-standard' },
       root: 11,
+      fretboardLabelMode: 'degree',
       bpm: 220,
     })
     expect(saved.guitar.stringCount).toBe(7)
     expect(saved.bass.stringCount).toBe(6)
     expect(saved.root).toBe(11)
+    expect(saved.fretboardLabelMode).toBe('degree')
     expect(saved.bpm).toBe(220)
   })
 
@@ -60,6 +64,7 @@ describe('settings persistence', () => {
       scaleType: 'chromatic',
       exerciseType: 'sixNote',
       mode: 'loop',
+      fretboardLabelMode: 'solfege',
       bpm: 10,
       metronomeVolume: 2,
       referenceVolume: Number.NaN,
@@ -71,6 +76,7 @@ describe('settings persistence', () => {
     expect(saved.scaleType).toBe('random')
     expect(saved.exerciseType).toBe('normal')
     expect(saved.mode).toBe('randomPosition')
+    expect(saved.fretboardLabelMode).toBe('note')
     expect(saved.bpm).toBe(100)
     expect(saved.metronomeVolume).toBe(0.3)
     expect(saved.referenceVolume).toBe(0.35)

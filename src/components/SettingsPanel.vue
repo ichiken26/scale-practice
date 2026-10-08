@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ExerciseType, InstrumentType, PracticeMode, RootSelection, ScaleType } from '../domain/types'
+import type { ExerciseType, FretboardLabelMode, InstrumentType, PracticeMode, RootSelection, ScaleType } from '../domain/types'
 
 defineProps<{
   instrument: InstrumentType
@@ -9,6 +9,7 @@ defineProps<{
   scaleType: ScaleType | 'random'
   exerciseType: ExerciseType
   mode: PracticeMode
+  fretboardLabelMode: FretboardLabelMode
   bpm: number
   metronomeVolume: number
   referenceVolume: number
@@ -23,6 +24,7 @@ const emit = defineEmits<{
   (e: 'update:scaleType', v: ScaleType | 'random'): void
   (e: 'update:exerciseType', v: ExerciseType): void
   (e: 'update:mode', v: PracticeMode): void
+  (e: 'update:fretboardLabelMode', v: FretboardLabelMode): void
   (e: 'update:bpm', v: number): void
   (e: 'update:metronomeVolume', v: number): void
   (e: 'update:referenceVolume', v: number): void
@@ -60,6 +62,7 @@ function rootValue(event: Event): RootSelection {
       <label>Scale<select :disabled="disabled" :value="scaleType" @change="emit('update:scaleType', ($event.target as HTMLSelectElement).value as ScaleType | 'random')"><option value="random">Random</option><option value="major">Major</option><option value="naturalMinor">Natural Minor</option><option value="harmonicMinor">Harmonic Minor</option><option value="melodicMinor">Melodic Minor</option><option value="majorPentatonic">Major Pentatonic</option><option value="minorPentatonic">Minor Pentatonic</option></select></label>
       <label>Pattern<select :disabled="disabled" :value="exerciseType" @change="emit('update:exerciseType', ($event.target as HTMLSelectElement).value as ExerciseType)"><option value="normal">Normal</option><option value="threeNote">3-note</option><option value="fourNote">4-note</option></select></label>
       <label>Mode<select :disabled="disabled" :value="mode" @change="emit('update:mode', ($event.target as HTMLSelectElement).value as PracticeMode)"><option value="randomPosition">Random Position</option><option value="fullNeck">Full Neck</option></select></label>
+      <label>Fretboard<select :value="fretboardLabelMode" @change="emit('update:fretboardLabelMode', ($event.target as HTMLSelectElement).value as FretboardLabelMode)"><option value="note">Note names</option><option value="degree">Intervals</option></select></label>
       <label>BPM<input type="number" min="40" max="220" :disabled="disabled" :value="bpm" @input="emit('update:bpm', Number(($event.target as HTMLInputElement).value))"></label>
       <label>Click<input :value="metronomeVolume" type="range" min="0" max="1" step=".01" @input="emit('update:metronomeVolume', Number(($event.target as HTMLInputElement).value))"></label>
       <label>Reference<input :value="referenceVolume" type="range" min="0" max="1" step=".01" @input="emit('update:referenceVolume', Number(($event.target as HTMLInputElement).value))"></label>

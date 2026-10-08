@@ -1,4 +1,4 @@
-import type { ExerciseType, InstrumentType, PracticeMode, RootSelection, ScaleType } from '../domain/types'
+import type { ExerciseType, FretboardLabelMode, InstrumentType, PracticeMode, RootSelection, ScaleType } from '../domain/types'
 
 export interface InstrumentPreference {
   stringCount: number
@@ -13,6 +13,7 @@ export interface PersistedSettings {
   scaleType: ScaleType | 'random'
   exerciseType: ExerciseType
   mode: PracticeMode
+  fretboardLabelMode: FretboardLabelMode
   bpm: number
   metronomeVolume: number
   referenceVolume: number
@@ -22,6 +23,7 @@ const STORAGE_KEY = 'scale-trainer-settings'
 const SCALE_TYPES = ['random', 'major', 'naturalMinor', 'harmonicMinor', 'melodicMinor', 'majorPentatonic', 'minorPentatonic'] as const
 const EXERCISE_TYPES = ['normal', 'threeNote', 'fourNote'] as const
 const MODES = ['randomPosition', 'fullNeck'] as const
+const FRETBOARD_LABEL_MODES = ['note', 'degree'] as const
 const GUITAR_STRINGS = [6, 7] as const
 const BASS_STRINGS = [4, 5, 6] as const
 
@@ -34,6 +36,7 @@ export function defaultSettings(): PersistedSettings {
     scaleType: 'random',
     exerciseType: 'normal',
     mode: 'randomPosition',
+    fretboardLabelMode: 'note',
     bpm: 100,
     metronomeVolume: 0.3,
     referenceVolume: 0.35,
@@ -51,6 +54,7 @@ export function sanitizeSettings(value: unknown): PersistedSettings {
     scaleType: oneOf(value.scaleType, SCALE_TYPES, defaults.scaleType),
     exerciseType: oneOf(value.exerciseType, EXERCISE_TYPES, defaults.exerciseType),
     mode: oneOf(value.mode, MODES, defaults.mode),
+    fretboardLabelMode: oneOf(value.fretboardLabelMode, FRETBOARD_LABEL_MODES, defaults.fretboardLabelMode),
     bpm: finiteInRange(value.bpm, 40, 220, defaults.bpm),
     metronomeVolume: finiteInRange(value.metronomeVolume, 0, 1, defaults.metronomeVolume),
     referenceVolume: finiteInRange(value.referenceVolume, 0, 1, defaults.referenceVolume),

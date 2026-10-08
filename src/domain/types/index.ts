@@ -4,6 +4,7 @@ export type InstrumentType = 'guitar'|'bass'
 export type ExerciseType = 'normal'|'threeNote'|'fourNote'
 export type PracticeMode = 'randomPosition'|'fullNeck'
 export type RootSelection = PitchClass|'auto'
+export type FretboardLabelMode = 'note'|'degree'
 
 export interface FretboardCell { stringIndex: number; fret: number; midi: number; pitchClass: PitchClass }
 export interface FretboardNote extends FretboardCell { scaleDegree: number }

@@ -1,4 +1,4 @@
-import type { ExerciseType, InstrumentType, PracticeMode, ScaleType } from '../domain/types'
+import type { ExerciseType, InstrumentType, PracticeMode, RootSelection, ScaleType } from '../domain/types'
 
 export interface InstrumentPreference {
   stringCount: number
@@ -9,6 +9,7 @@ export interface PersistedSettings {
   instrument: InstrumentType
   guitar: InstrumentPreference
   bass: InstrumentPreference
+  root: RootSelection
   scaleType: ScaleType | 'random'
   exerciseType: ExerciseType
   mode: PracticeMode
@@ -29,6 +30,7 @@ export function defaultSettings(): PersistedSettings {
     instrument: 'guitar',
     guitar: { stringCount: 6, tuningId: 'guitar-6-standard' },
     bass: { stringCount: 4, tuningId: 'bass-4-standard' },
+    root: 'auto',
     scaleType: 'random',
     exerciseType: 'normal',
     mode: 'randomPosition',
@@ -45,6 +47,7 @@ export function sanitizeSettings(value: unknown): PersistedSettings {
     instrument: value.instrument === 'bass' ? 'bass' : 'guitar',
     guitar: sanitizeInstrument(value.guitar, 'guitar', defaults.guitar),
     bass: sanitizeInstrument(value.bass, 'bass', defaults.bass),
+    root: sanitizeRoot(value.root, defaults.root),
     scaleType: oneOf(value.scaleType, SCALE_TYPES, defaults.scaleType),
     exerciseType: oneOf(value.exerciseType, EXERCISE_TYPES, defaults.exerciseType),
     mode: oneOf(value.mode, MODES, defaults.mode),
@@ -66,6 +69,13 @@ export function loadSettings(storage: Pick<Storage, 'getItem'>): PersistedSettin
 
 export function saveSettings(storage: Pick<Storage, 'setItem'>, settings: PersistedSettings): void {
   storage.setItem(STORAGE_KEY, JSON.stringify(sanitizeSettings(settings)))
+}
+
+function sanitizeRoot(value: unknown, fallback: RootSelection): RootSelection {
+  if (value === 'auto') return value
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 11
+    ? value as RootSelection
+    : fallback
 }
 
 function sanitizeInstrument(value: unknown, instrument: InstrumentType, fallback: InstrumentPreference): InstrumentPreference {

@@ -3,6 +3,7 @@ export type ScaleType = 'major'|'naturalMinor'|'harmonicMinor'|'melodicMinor'|'m
 export type InstrumentType = 'guitar'|'bass'
 export type ExerciseType = 'normal'|'threeNote'|'fourNote'
 export type PracticeMode = 'randomPosition'|'fullNeck'
+export type RootSelection = PitchClass|'auto'
 
 export interface FretboardCell { stringIndex: number; fret: number; midi: number; pitchClass: PitchClass }
 export interface FretboardNote extends FretboardCell { scaleDegree: number }
@@ -32,7 +33,7 @@ export interface ExerciseNote { note: FretboardNote; sourceIndex: number }
 export interface TimelineEvent { tick: number; durationTicks: number; type: 'note'|'metronome'|'announcement'|'preview'|'rest'; midi?: number; note?: FretboardNote; accent?: boolean }
 export interface ExerciseTimeline { events: readonly TimelineEvent[]; totalTicks: number; ascendingEndTick: number; descendingStartTick: number }
 export interface BuildExerciseTimelineParams { ascending: readonly ExerciseNote[]; descending: readonly ExerciseNote[]; exerciseType: ExerciseType; previewBars?: number; gapBars?: number }
-export interface PracticeSettings { instrument: InstrumentType; tuning: readonly number[]; root: PitchClass; scaleType: ScaleType|'random'; exerciseType: ExerciseType; mode: PracticeMode; bpm: number; seed: number }
+export interface PracticeSettings { instrument: InstrumentType; tuning: readonly number[]; root: RootSelection; scaleType: ScaleType|'random'; exerciseType: ExerciseType; mode: PracticeMode; bpm: number; seed: number }
 export interface PracticeRound { id: string; combination: ScaleCombination; paths: readonly FretboardPath[]; timeline: ExerciseTimeline; debugEvents: readonly string[] }
 export interface RoundGenerationState { scaleBag: ScaleCombination[]; previousCombination: ScaleCombination|null; positionBags: Map<string,PositionBag> }
 export interface RoundGenerationContext { settings: PracticeSettings; rng: import('../random/rng').SeededRng; previousCombination?: ScaleCombination|null; excludedPaths?: readonly FretboardPath[]; state?: RoundGenerationState }

@@ -12,12 +12,23 @@ import { BAR_4_4, QUARTER } from '../timeline/constants'
 const PATH_GAP_TICKS = BAR_4_4 * 2
 const CLICK_TICKS = 120
 
+function previousCombination(context: RoundGenerationContext): ScaleCombination | null {
+  return context.state?.previousCombination ?? context.previousCombination ?? null
+}
+
 function createScaleBag(context: RoundGenerationContext): ScaleCombination[] {
-  if (context.settings.scaleType !== 'random') {
-    return [...buildSequentialScaleCycle(context.settings.scaleType)]
+  const { root, scaleType } = context.settings
+
+  if (root !== 'auto') {
+    if (scaleType !== 'random') return [{ root, scaleType }]
+    const fixedRootBag = buildWeightedScaleBag('random').filter(item => item.root === root)
+    return preventBoundaryDuplicate(previousCombination(context), shuffleScaleBag(fixedRootBag, context.rng))
   }
+
+  if (scaleType !== 'random') return [...buildSequentialScaleCycle(scaleType)]
+
   return preventBoundaryDuplicate(
-    context.state?.previousCombination ?? context.previousCombination ?? null,
+    previousCombination(context),
     shuffleScaleBag(buildWeightedScaleBag('random'), context.rng),
   )
 }

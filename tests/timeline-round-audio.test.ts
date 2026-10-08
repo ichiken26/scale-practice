@@ -123,25 +123,35 @@ describe('reference DSP', () => {
 })
 
 describe('clock and timing diagnostics', () => {
-  it('maps output timestamp and latency', () => {
+  it('uses getOutputTimestamp without double-counting output latency', () => {
     const context = {
       currentTime: 4,
+      baseLatency: 0.02,
       outputLatency: 0.1,
       getOutputTimestamp: () => ({ contextTime: 3, performanceTime: 1000 }),
     } as AudioContext
     const snapshot = getClockSnapshot(context)
-    expect(estimateAudibleContextTime(snapshot, 1500)).toBe(3.6)
+    expect(snapshot.usesOutputTimestamp).toBe(true)
+    expect(estimateAudibleContextTime(snapshot, 1500)).toBe(3.5)
     expect(timelineTickAtContextTime(2, 1, 120)).toBe(1920)
   })
 
-  it('falls back to currentTime', () => {
+  it('falls back to currentTime minus reported pipeline latency', () => {
     const old = globalThis.performance
     Object.defineProperty(globalThis, 'performance', { value: { now: () => 2000 }, configurable: true })
-    expect(getClockSnapshot({ currentTime: 4 } as AudioContext)).toEqual({
+    const snapshot = getClockSnapshot({
+      currentTime: 4,
+      baseLatency: 0.02,
+      outputLatency: 0.03,
+    } as AudioContext)
+    expect(snapshot).toEqual({
       contextTime: 4,
       performanceTime: 2000,
-      outputLatency: 0,
+      baseLatency: 0.02,
+      outputLatency: 0.03,
+      usesOutputTimestamp: false,
     })
+    expect(estimateAudibleContextTime(snapshot, 2000)).toBeCloseTo(3.95)
     Object.defineProperty(globalThis, 'performance', { value: old, configurable: true })
   })
 

@@ -46,7 +46,13 @@ export interface PracticeRound { id: string; combination: ScaleCombination; path
 export interface RoundGenerationState { scaleBag: ScaleCombination[]; previousCombination: ScaleCombination|null; positionBags: Map<string,PositionBag> }
 export interface RoundGenerationContext { settings: PracticeSettings; rng: import('../random/rng').SeededRng; previousCombination?: ScaleCombination|null; excludedPaths?: readonly FretboardPath[]; state?: RoundGenerationState }
 
-export interface AudioClockSnapshot { contextTime: number; performanceTime: number; outputLatency: number }
+export interface AudioClockSnapshot {
+  contextTime: number
+  performanceTime: number
+  baseLatency: number
+  outputLatency: number
+  usesOutputTimestamp: boolean
+}
 export interface VisualTimelineState { currentEvent: TimelineEvent|null; nextEvent: TimelineEvent|null; eventIndex: number; progress: number }
 export interface TimingSample { expectedTime: number; audioContextTime: number; outputContextTime: number; performanceTime: number; estimatedAudibleTime: number; visualTarget: number; visualActual: number; deviation: number; droppedFrames: number; audioContextState: string }
 export interface TimingStatistics { count: number; max: number; mean: number; p95: number; p99: number }

@@ -54,6 +54,24 @@ describe('tick timeline', () => {
     expect(apexEvents[1]?.tick).toBe(timeline.descendingStartTick)
   })
 
+  it('turns four-note patterns around immediately without stretching the apex', () => {
+    const oddNotes = notes.slice(0, 7)
+    const ascending = createAscendingExercise(oddNotes, 'fourNote')
+    const timeline = buildExerciseTimeline({
+      ascending,
+      descending: createDescendingExercise(oddNotes, 'fourNote'),
+      exerciseType: 'fourNote',
+    })
+    const previewTicks = BAR_4_4 * 2
+    expect(timeline.descendingStartTick).toBe(previewTicks + ascending.length * EIGHTH)
+    expect(timeline.descendingStartTick).toBe(timeline.ascendingEndTick)
+
+    const musical = timeline.events.filter(event => event.type === 'note')
+    const ascendingLast = musical[ascending.length - 1]
+    expect(ascendingLast?.durationTicks).toBe(Math.round(EIGHTH * 0.8))
+    expect(musical[ascending.length]?.tick).toBe(timeline.descendingStartTick)
+  })
+
   it('aligns the descending phrase end to a bar boundary', () => {
     const timeline = buildExerciseTimeline({
       ascending: createAscendingExercise(notes.slice(0, 7), 'normal'),

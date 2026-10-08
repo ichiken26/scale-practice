@@ -48,8 +48,9 @@ export function buildExerciseTimeline(params: BuildExerciseTimelineParams): Exer
   }
 
   const ascendingEndTick = tick
-  const descendingStartTick = alignTickToNextBar(ascendingEndTick) + gap
-  extendLastNoteTo(events, descendingStartTick)
+  const shouldTurnImmediately = params.exerciseType === 'fourNote'
+  const descendingStartTick = (shouldTurnImmediately ? ascendingEndTick : alignTickToNextBar(ascendingEndTick)) + gap
+  if (!shouldTurnImmediately) extendLastNoteTo(events, descendingStartTick)
 
   tick = descendingStartTick
   for (const item of params.descending) {
